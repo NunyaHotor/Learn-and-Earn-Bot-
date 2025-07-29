@@ -111,4 +111,4 @@ def answer_handler(call):
 
 if __name__ == '__main__':
     print("Bot is running...")
-    bot.infinity_polling()
+    bot.polling()
