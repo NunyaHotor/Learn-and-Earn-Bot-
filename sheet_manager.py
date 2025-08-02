@@ -40,6 +40,7 @@ class UserColumns:
     REFERRER_ID = 6
     REFERRAL_EARNINGS = 7
     MOMO_NUMBER = 8
+    LAST_CLAIM_DATE = 9
 
 DEFAULT_USER_TOKENS = 3
 REFERRAL_BONUS_TOKENS = 1
@@ -128,7 +129,8 @@ class SheetManager:
                 0,  # Initial points
                 referrer_id or '',
                 0,  # Initial referral earnings
-                momo_number
+                momo_number,
+                ''  # Last claim date
             ]
 
             self.main_sheet.append_row(new_row)
@@ -161,7 +163,7 @@ class SheetManager:
             data = self.main_sheet.row_values(row_num)
 
             # Ensure we have enough columns
-            while len(data) < UserColumns.MOMO_NUMBER:
+            while len(data) < UserColumns.LAST_CLAIM_DATE:
                 data.append("")
 
             return {
@@ -172,7 +174,8 @@ class SheetManager:
                 "Points": self._safe_int(data[4], 0),
                 "ReferrerID": data[5],
                 "ReferralEarnings": self._safe_float(data[6], 0.0),
-                "MoMoNumber": data[7] if len(data) > 7 else ""
+                "MoMoNumber": data[7] if len(data) > 7 else "",
+                "LastClaimDate": data[8] if len(data) > 8 else ""
             }
 
         except APIError as e:
@@ -410,6 +413,82 @@ class SheetManager:
         except (ValueError, TypeError):
             return default
 
+    def check_and_give_daily_reward(self, user_id: int) -> bool:
+        """
+        Check if user can claim daily reward and give it if eligible.
+
+        Args:
+            user_id: Telegram user ID
+
+        Returns:
+            True if reward was given, False if already claimed today
+        """
+        try:
+            row_num = self._get_user_row(user_id)
+            if not row_num:
+                logger.warning(f"Cannot give daily reward: User {user_id} not found")
+                return False
+
+            # Get current date
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            
+            # Get last claim date
+            last_claim_cell = self.main_sheet.cell(row_num, UserColumns.LAST_CLAIM_DATE)
+            last_claim = last_claim_cell.value or ""
+
+            # Check if already claimed today
+            if last_claim == today:
+                return False
+
+            # Give daily reward (1 token)
+            current_tokens = self.main_sheet.cell(row_num, UserColumns.TOKENS).value
+            new_tokens = self._safe_int(current_tokens, 0) + 1
+
+            # Update tokens and last claim date in batch
+            updates = [
+                {'range': f'D{row_num}', 'values': [[new_tokens]]},
+                {'range': f'I{row_num}', 'values': [[today]]}
+            ]
+
+            self.main_sheet.batch_update(updates)
+            logger.info(f"Gave daily reward to user {user_id}: +1 token")
+            return True
+
+        except APIError as e:
+            logger.error(f"API error giving daily reward to {user_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error giving daily reward to {user_id}: {e}")
+            return False
+
+    def update_last_claim_date(self, user_id: int) -> bool:
+        """
+        Update the last claim date for a user.
+
+        Args:
+            user_id: Telegram user ID
+
+        Returns:
+            True if update successful, False otherwise
+        """
+        try:
+            row_num = self._get_user_row(user_id)
+            if not row_num:
+                logger.warning(f"Cannot update claim date: User {user_id} not found")
+                return False
+
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            self.main_sheet.update_cell(row_num, UserColumns.LAST_CLAIM_DATE, today)
+            logger.info(f"Updated last claim date for user {user_id}")
+            return True
+
+        except APIError as e:
+            logger.error(f"API error updating claim date for {user_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error updating claim date for {user_id}: {e}")
+            return False
+
     @staticmethod
     def _safe_float(value: Any, default: float = 0.0) -> float:
         """Safely convert value to float."""
@@ -473,3 +552,13 @@ def log_point_redemption(user_id: int, reward: str, points_used: int, timestamp:
 def reward_referrer(referrer_id: int) -> bool:
     """Reward referrer (backward compatibility)."""
     return get_sheet_manager().reward_referrer(referrer_id)
+
+
+def check_and_give_daily_reward(user_id: int) -> bool:
+    """Check and give daily reward (backward compatibility)."""
+    return get_sheet_manager().check_and_give_daily_reward(user_id)
+
+
+def update_last_claim_date(user_id: int) -> bool:
+    """Update last claim date (backward compatibility)."""
+    return get_sheet_manager().update_last_claim_date(user_id)

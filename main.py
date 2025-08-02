@@ -18,7 +18,9 @@ from sheet_manager import (
     log_token_purchase,
     increment_referral_count,
     log_point_redemption,
-    update_user_momo
+    update_user_momo,
+    check_and_give_daily_reward,
+    update_last_claim_date
 )
 
 # Configure logging
@@ -52,6 +54,25 @@ quizzes = [
 pending_momo = {}
 current_question = {}
 custom_token_requests = {}
+
+# Motivational messages
+MOTIVATIONAL_MESSAGES = [
+    "🌟 Believe in yourself! Every question you answer makes you smarter!",
+    "🚀 Success is a journey, not a destination. Keep learning!",
+    "💪 Your potential is limitless! Keep pushing forward!",
+    "🎯 Focus on progress, not perfection. You're doing great!",
+    "🌈 Every expert was once a beginner. Keep going!",
+    "✨ Knowledge is power, and you're gaining it every day!",
+    "🔥 Champions are made in practice. Keep quizzing!",
+    "🎉 You're amazing! Every effort counts towards your success!",
+    "💡 Smart minds ask great questions. You're on the right track!",
+    "🏆 Winners never quit, and quitters never win. You've got this!",
+    "🌱 Growth happens outside your comfort zone. Keep learning!",
+    "⭐ You're not just earning tokens, you're building knowledge!",
+    "🎪 Make learning fun! Every quiz is a step forward!",
+    "🦋 Transform your mind one question at a time!",
+    "🎊 Celebrate small wins! They lead to big victories!"
+]
 
 # Configuration constants
 TOKEN_PRICING = {
@@ -96,6 +117,7 @@ def create_main_menu():
         KeyboardButton("🎮 Play Quiz"),
         KeyboardButton("💰 Buy Tokens"),
         KeyboardButton("🎁 Redeem Rewards"),
+        KeyboardButton("🎁 Daily Reward"),
         KeyboardButton("📊 My Stats"),
         KeyboardButton("👥 Referrals"),
         KeyboardButton("ℹ️ Help")
@@ -131,17 +153,29 @@ def start_handler(message):
         increment_referral_count(referrer_id)
         bot.send_message(referrer_id, "🎉 You got a new referral! +1 token added to your account.")
     
+    # Check for daily reward
+    daily_reward_given = check_and_give_daily_reward(chat_id)
+    
+    # Send motivational message
+    motivation = random.choice(MOTIVATIONAL_MESSAGES)
+    
     welcome_msg = f"""
 🎓 <b>Welcome to Learn4Cash Quiz Bot!</b>
 
 Hello {user.first_name}! Ready to earn while you learn?
 
+{motivation}
+
 🔐 You start with <b>3 free tokens</b>
 🧠 Earn <b>10 points</b> per correct answer
 🎁 Redeem points for tokens, airtime, or crypto
+🎁 Get <b>1 free token daily</b> - just visit us!
 
 Use the menu below to get started!
     """
+    
+    if daily_reward_given:
+        welcome_msg += "\n\n🎉 <b>Daily Bonus:</b> +1 free token added to your account!"
     
     bot.send_message(chat_id, welcome_msg, reply_markup=create_main_menu())
 
@@ -287,6 +321,39 @@ Share this link with friends to earn rewards!
     bot.send_message(chat_id, referral_msg)
 
 
+@bot.message_handler(func=lambda message: message.text == "🎁 Daily Reward")
+def daily_reward_handler(message):
+    """Handle the daily reward request."""
+    chat_id = message.chat.id
+    user = get_user_data(chat_id)
+    
+    if not user:
+        bot.send_message(chat_id, "Please /start first.")
+        return
+    
+    # Check for daily reward
+    daily_reward_given = check_and_give_daily_reward(chat_id)
+    motivation = random.choice(MOTIVATIONAL_MESSAGES)
+    
+    if daily_reward_given:
+        updated_user = get_user_data(chat_id)
+        bot.send_message(
+            chat_id,
+            f"🎉 <b>Daily Reward Claimed!</b>\n\n"
+            f"✅ +1 free token added to your account!\n"
+            f"💰 Total tokens: {updated_user['Tokens']}\n\n"
+            f"{motivation}"
+        )
+    else:
+        bot.send_message(
+            chat_id,
+            f"⏰ <b>Daily Reward Already Claimed!</b>\n\n"
+            f"Come back tomorrow for your next free token!\n"
+            f"💰 Current tokens: {user['Tokens']}\n\n"
+            f"{motivation}"
+        )
+
+
 @bot.message_handler(func=lambda message: message.text == "ℹ️ Help")
 def help_handler(message):
     """Handle the help request."""
@@ -301,7 +368,12 @@ def help_handler(message):
 💰 <b>Buying Tokens:</b>
 • Choose from different packages
 • Pay via MoMo or Crypto
-• Send payment proof to @Learn4CashAdmin
+• Tokens added automatically after payment confirmation
+
+🎁 <b>Daily Rewards:</b>
+• Get 1 free token every day
+• Just visit the bot daily to claim
+• No limits on daily claims!
 
 🎁 <b>Redeeming:</b>
 • Exchange points for rewards
@@ -433,7 +505,11 @@ def buy_callback_handler(call):
         f"💰 You selected: <b>{package_label}</b>\n\n"
         f"📲 Please send your MoMo number to complete the purchase.\n"
         f"💸 Price: {package_info['price']}\n\n"
-        "After sending your MoMo number, make the payment and send proof to @Learn4CashAdmin."
+        "After sending your MoMo number:\n"
+        "📱 Make payment via MoMo: 0551234567\n"
+        "💳 Or pay crypto (USDT): Check payment links\n"
+        "🔄 Tokens will be added automatically after payment confirmation!\n"
+        "📞 Contact @Learn4CashAdmin for any issues."
     )
 
 
