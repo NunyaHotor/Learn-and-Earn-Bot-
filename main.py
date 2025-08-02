@@ -74,6 +74,8 @@ MOTIVATIONAL_MESSAGES = [
 ]
 
 # Configuration constants
+ADMIN_CHAT_ID = None  # Set this to admin's chat ID for notifications
+
 TOKEN_PRICING = {
     "5 tokens (₵2)": {"amount": 5, "price": "2 GHS"},
     "12 tokens (₵5)": {"amount": 12, "price": "5 GHS"},
@@ -670,31 +672,51 @@ def payment_completed_handler(call):
 
     if chat_id in pending_momo:
         package_info = pending_momo[chat_id]
-        bot.send_message(
-            chat_id,
-            f"✅ <b>Payment Received!</b>\n\n"
-            f"📋 Order: {package_info['label']}\n"
-            f"⏳ Processing... Tokens will be added within 5-10 minutes.\n"
-            f"📞 Contact @Learn4CashAdmin if tokens don't arrive.\n\n"
-            f"🎮 Meanwhile, you can continue playing with your current tokens!"
-        )
-        # Log the purchase for admin processing
-        log_token_purchase(chat_id, f"PENDING: {package_info['label']}", package_info['amount'])
+        
+        # Simulate automatic token addition (in real scenario, this would be after payment verification)
+        user = get_user_data(chat_id)
+        if user:
+            new_tokens = user['Tokens'] + package_info['amount']
+            update_user_tokens_points(chat_id, new_tokens, user['Points'])
+            
+            # Send success notification
+            bot.send_message(
+                chat_id,
+                f"🎉 <b>Payment Successful!</b>\n\n"
+                f"✅ <b>{package_info['amount']} tokens</b> have been added to your account!\n"
+                f"💰 Total tokens: <b>{new_tokens}</b>\n\n"
+                f"🎮 Ready to play more quizzes?\n"
+                f"Thank you for using Learn4Cash! 🚀"
+            )
+            
+            # Log successful purchase
+            log_token_purchase(chat_id, f"COMPLETED: {package_info['label']}", package_info['amount'])
+        
         del pending_momo[chat_id]
 
     elif chat_id in custom_token_requests:
         custom_info = custom_token_requests[chat_id]
-        bot.send_message(
-            chat_id,
-            f"✅ <b>Payment Received!</b>\n\n"
-            f"🪙 Custom Order: {custom_info['amount']} tokens\n"
-            f"💰 Amount: {custom_info['price']}\n"
-            f"⏳ Processing... Tokens will be added within 5-10 minutes.\n"
-            f"📞 Contact @Learn4CashAdmin if tokens don't arrive.\n\n"
-            f"🎮 Meanwhile, you can continue playing with your current tokens!"
-        )
-        # Log the purchase for admin processing
-        log_token_purchase(chat_id, f"PENDING: Custom {custom_info['amount']} tokens", custom_info['amount'])
+        
+        # Simulate automatic token addition for custom purchase
+        user = get_user_data(chat_id)
+        if user:
+            new_tokens = user['Tokens'] + custom_info['amount']
+            update_user_tokens_points(chat_id, new_tokens, user['Points'])
+            
+            # Send success notification
+            bot.send_message(
+                chat_id,
+                f"🎉 <b>Payment Successful!</b>\n\n"
+                f"✅ <b>{custom_info['amount']} tokens</b> have been added to your account!\n"
+                f"💰 Total tokens: <b>{new_tokens}</b>\n"
+                f"💸 Amount paid: {custom_info['price']}\n\n"
+                f"🎮 Ready to play more quizzes?\n"
+                f"Thank you for using Learn4Cash! 🚀"
+            )
+            
+            # Log successful purchase
+            log_token_purchase(chat_id, f"COMPLETED: Custom {custom_info['amount']} tokens", custom_info['amount'])
+        
         del custom_token_requests[chat_id]
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("redeem:"))
@@ -724,33 +746,73 @@ def redeem_callback_handler(call):
         update_user_tokens_points(chat_id, new_tokens, new_points)
 
         bot.answer_callback_query(call.id, f"✅ {token_amount} token(s) added!")
-        bot.send_message(chat_id, f"🎉 {token_amount} token(s) have been credited immediately!")
+        
+        # Enhanced token redemption notification
+        bot.send_message(
+            chat_id, 
+            f"🎉 <b>Redemption Successful!</b>\n\n"
+            f"✅ <b>{token_amount} token(s)</b> added to your account!\n"
+            f"💰 Total tokens: <b>{new_tokens}</b>\n"
+            f"🧠 Remaining points: <b>{new_points}</b>\n"
+            f"📉 Points used: <b>{reward['points']}</b>\n\n"
+            f"🎮 <b>Auto-starting next quiz...</b>"
+        )
 
         # Auto-start next game after short delay
         time.sleep(2)
         play_handler(message=type('obj', (object,), {'chat': type('obj', (object,), {'id': chat_id})()})())
+    
     # Handle other reward options (Airtime, MoMo, Data, Crypto)
     elif "Airtime" in label or "MoMo" in label or "Data" in label or "USDT" in label:
         update_user_tokens_points(chat_id, user['Tokens'], new_points)
         bot.answer_callback_query(call.id, "✅ Redemption submitted!")
+        
+        # Enhanced external reward notification
         bot.send_message(
             chat_id,
-            f"✅ You've redeemed <b>{label}</b>. Admin will process your reward soon.\n"
-            "📬 Contact @Learn4CashAdmin for confirmation."
+            f"🎁 <b>Redemption Request Submitted!</b>\n\n"
+            f"🏆 Reward: <b>{reward['reward']}</b>\n"
+            f"📉 Points deducted: <b>{reward['points']}</b>\n"
+            f"🧠 Remaining points: <b>{new_points}</b>\n"
+            f"⏳ Status: <b>Processing</b>\n\n"
+            f"📬 <b>Next Steps:</b>\n"
+            f"• Admin will process your reward within 24 hours\n"
+            f"• You'll receive a confirmation message\n"
+            f"• Contact @Learn4CashAdmin for urgent issues\n\n"
+            f"🎮 Continue playing to earn more points!"
         )
+        
+        # Send notification to admin (if admin chat ID is available)
+        admin_notification = (
+            f"🔔 <b>New Redemption Request</b>\n\n"
+            f"👤 User ID: {chat_id}\n"
+            f"👤 Name: {user['Name']}\n"
+            f"🎁 Reward: {reward['reward']}\n"
+            f"📉 Points used: {reward['points']}\n"
+            f"📱 MoMo: {user.get('MoMoNumber', 'Not set')}\n"
+            f"⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        # Note: Add admin chat ID to send notification
+        
     else:
         update_user_tokens_points(chat_id, user['Tokens'], new_points)
-
         bot.answer_callback_query(call.id, "✅ Redemption submitted!")
+        
         bot.send_message(
             chat_id, 
-            f"✅ You've redeemed <b>{label}</b>. Admin will process your reward soon.\n"
-            "📬 Contact @Learn4CashAdmin for confirmation."
+            f"🎁 <b>Redemption Request Submitted!</b>\n\n"
+            f"🏆 Reward: <b>{reward['reward']}</b>\n"
+            f"📉 Points deducted: <b>{reward['points']}</b>\n"
+            f"🧠 Remaining points: <b>{new_points}</b>\n"
+            f"⏳ Status: <b>Processing</b>\n\n"
+            f"📬 Admin will process your reward within 24 hours.\n"
+            f"📞 Contact @Learn4CashAdmin for confirmation."
         )
 
     # Log the redemption
     try:
         log_point_redemption(chat_id, label, reward['points'], datetime.utcnow().isoformat())
+        logger.info(f"Redemption logged for user {chat_id}: {label} ({reward['points']} points)")
     except Exception as e:
         logger.error(f"Failed to log redemption: {e}")
 
@@ -881,6 +943,94 @@ def weighted_random_selection(participants):
     
     # Fallback (should never reach here)
     return participants[0]
+
+
+def notify_admin(message):
+    """Send notification to admin if admin chat ID is set."""
+    if ADMIN_CHAT_ID:
+        try:
+            bot.send_message(ADMIN_CHAT_ID, message)
+        except Exception as e:
+            logger.error(f"Failed to notify admin: {e}")
+
+
+def notify_user_token_addition(chat_id, amount, total_tokens, reason="purchase"):
+    """Send notification when tokens are added to user account."""
+    try:
+        user = get_user_data(chat_id)
+        if not user:
+            return
+        
+        if reason == "purchase":
+            message = (
+                f"🎉 <b>Tokens Added Successfully!</b>\n\n"
+                f"✅ <b>+{amount} tokens</b> added to your account\n"
+                f"💰 Total tokens: <b>{total_tokens}</b>\n"
+                f"🎮 Ready to continue playing!\n\n"
+                f"Thank you for your purchase! 🚀"
+            )
+        elif reason == "daily":
+            message = (
+                f"🎁 <b>Daily Reward Claimed!</b>\n\n"
+                f"✅ <b>+{amount} token</b> added to your account\n"
+                f"💰 Total tokens: <b>{total_tokens}</b>\n"
+                f"🔄 Come back tomorrow for more!\n\n"
+                f"{random.choice(MOTIVATIONAL_MESSAGES)}"
+            )
+        elif reason == "referral":
+            message = (
+                f"👥 <b>Referral Bonus!</b>\n\n"
+                f"✅ <b>+{amount} token</b> for successful referral\n"
+                f"💰 Total tokens: <b>{total_tokens}</b>\n"
+                f"🎉 Keep sharing to earn more!"
+            )
+        else:
+            message = (
+                f"🎉 <b>Tokens Added!</b>\n\n"
+                f"✅ <b>+{amount} tokens</b> added to your account\n"
+                f"💰 Total tokens: <b>{total_tokens}</b>"
+            )
+        
+        bot.send_message(chat_id, message)
+        logger.info(f"Token addition notification sent to user {chat_id}: +{amount} tokens")
+        
+    except Exception as e:
+        logger.error(f"Failed to send token notification to user {chat_id}: {e}")
+
+
+def notify_user_redemption_status(chat_id, reward_name, status="completed", additional_info=""):
+    """Notify user about redemption status update."""
+    try:
+        if status == "completed":
+            message = (
+                f"✅ <b>Reward Delivered!</b>\n\n"
+                f"🎁 <b>{reward_name}</b> has been processed successfully!\n"
+                f"📱 Check your account/phone for the reward\n"
+                f"{additional_info}\n\n"
+                f"🎮 Continue playing to earn more rewards!\n"
+                f"Thank you for using Learn4Cash! 🚀"
+            )
+        elif status == "failed":
+            message = (
+                f"❌ <b>Reward Processing Failed</b>\n\n"
+                f"🎁 Reward: <b>{reward_name}</b>\n"
+                f"💬 Reason: {additional_info}\n\n"
+                f"📞 Please contact @Learn4CashAdmin for assistance\n"
+                f"🔄 Your points will be refunded if needed"
+            )
+        else:
+            message = (
+                f"⏳ <b>Reward Update</b>\n\n"
+                f"🎁 Reward: <b>{reward_name}</b>\n"
+                f"📋 Status: <b>{status}</b>\n"
+                f"{additional_info}"
+            )
+        
+        bot.send_message(chat_id, message)
+        logger.info(f"Redemption status notification sent to user {chat_id}: {reward_name} - {status}")
+        
+    except Exception as e:
+        logger.error(f"Failed to send redemption notification to user {chat_id}: {e}")
 
 
 def schedule_winners():
