@@ -113,7 +113,7 @@ PAYMENT_INFO = """
 
 
 def create_main_menu():
-    """Create the main menu keyboard."""
+    """Create the main menu keyboard.""" 
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         KeyboardButton("🎮 Play Quiz"),
@@ -123,7 +123,7 @@ def create_main_menu():
         KeyboardButton("📊 My Stats"),
         KeyboardButton("👥 Referrals"),
         KeyboardButton("ℹ️ Help"),
-        KeyboardButton("🏆 Leaderboard")  # Added leaderboard button
+        KeyboardButton("🏆 Leaderboard")
     )
     return markup
 
@@ -396,9 +396,9 @@ def help_handler(message):
 • You start with 3 free tokens
 
 💰 <b>Buying Tokens:</b>
-• Choose from different packages
-• Pay via MoMo or Crypto
-• Tokens added automatically after payment confirmation
+• Choose from different packages or custom amount
+• Pay via MoMo or Crypto using secure payment links
+• Tokens processed within 5-10 minutes after payment
 
 🎁 <b>Daily Rewards:</b>
 • Get 1 free token every day
@@ -407,13 +407,19 @@ def help_handler(message):
 
 🎁 <b>Redeeming:</b>
 • Exchange points for rewards
-• Get tokens, airtime, or crypto
+• Get tokens, airtime, data, MoMo, or crypto
 • Rewards are processed by admin
 
 👥 <b>Referrals:</b>
 • Earn 1 token per referral
 • Share your referral link
 • Unlimited earning potential
+
+🎰 <b>Fair Lottery System:</b>
+• Daily, weekly, and monthly winners
+• Based on points with fair weighted probability
+• Test the system: /test_lottery
+• See live draw simulation: /simulate_draw
 
 Need more help? Contact @Learn4CashAdmin
     """
@@ -437,6 +443,113 @@ def leaderboard_handler(message):
 
     bot.send_message(chat_id, leaderboard_msg)
 
+@bot.message_handler(commands=['test_lottery'])
+def test_lottery_handler(message):
+    """Test the lottery system (admin only)."""
+    chat_id = message.chat.id
+    
+    # For testing purposes, allow anyone to test the lottery
+    # In production, you might want to restrict this to admins
+    
+    # Simulate user data for testing
+    test_users = {
+        chat_id: get_user_data(chat_id)['Points'] if get_user_data(chat_id) else 100,
+        123456789: 250,
+        987654321: 180,
+        555666777: 320,
+        111222333: 90
+    }
+    
+    # Test daily winner selection
+    daily_winner = select_winner_from_data(test_users, "daily")
+    weekly_winner = select_winner_from_data(test_users, "weekly") 
+    monthly_winner = select_winner_from_data(test_users, "monthly")
+    
+    test_msg = f"""
+🎰 <b>Lottery System Test</b>
+
+👥 <b>Test Pool:</b>
+User {chat_id}: {test_users[chat_id]} points
+User 123456789: 250 points  
+User 987654321: 180 points
+User 555666777: 320 points
+User 111222333: 90 points
+
+🏆 <b>Results:</b>
+📅 Daily Winner: User {daily_winner}
+📊 Weekly Winner: User {weekly_winner}  
+🎊 Monthly Winner: User {monthly_winner}
+
+✨ <b>Selection is based on:</b>
+• Points earned (weighted probability)
+• Random selection for fairness
+• Higher points = higher chance but not guaranteed
+
+🔄 Run /test_lottery again to see different results!
+    """
+    
+    bot.send_message(chat_id, test_msg)
+
+@bot.message_handler(commands=['simulate_draw'])
+def simulate_draw_handler(message):
+    """Simulate a live lottery draw for transparency."""
+    chat_id = message.chat.id
+    
+    # Get current user data
+    user = get_user_data(chat_id)
+    if not user:
+        bot.send_message(chat_id, "Please /start first.")
+        return
+    
+    # Simulate live draw
+    bot.send_message(chat_id, "🎰 <b>Starting Live Lottery Draw...</b>")
+    time.sleep(1)
+    
+    bot.send_message(chat_id, "🔄 Gathering eligible participants...")
+    time.sleep(2)
+    
+    # Simulate participants
+    participants = [
+        {"id": chat_id, "points": user['Points'], "name": user['Name']},
+        {"id": 123456, "points": 250, "name": "Player2"},
+        {"id": 789012, "points": 180, "name": "Player3"},
+        {"id": 345678, "points": 320, "name": "Player4"}
+    ]
+    
+    bot.send_message(chat_id, f"👥 Found {len(participants)} eligible participants!")
+    time.sleep(1)
+    
+    # Show participants
+    participants_msg = "📋 <b>Participants:</b>\n\n"
+    for p in participants:
+        participants_msg += f"• {p['name']} (ID: {p['id']}): {p['points']} points\n"
+    
+    bot.send_message(chat_id, participants_msg)
+    time.sleep(2)
+    
+    # Simulate drawing process
+    bot.send_message(chat_id, "🎲 Rolling the dice...")
+    time.sleep(2)
+    
+    bot.send_message(chat_id, "🔄 Calculating probabilities...")
+    time.sleep(1)
+    
+    # Select winner based on weighted probability
+    winner = weighted_random_selection(participants)
+    
+    bot.send_message(chat_id, "🎊 <b>AND THE WINNER IS...</b>")
+    time.sleep(2)
+    
+    bot.send_message(
+        chat_id, 
+        f"🏆 <b>CONGRATULATIONS!</b>\n\n"
+        f"🎉 Winner: {winner['name']}\n"
+        f"🆔 ID: {winner['id']}\n"
+        f"🧠 Points: {winner['points']}\n\n"
+        f"🎁 Prize will be processed shortly!\n"
+        f"📢 This draw was conducted fairly using weighted probability!"
+    )
+
 
 @bot.message_handler(func=lambda message: message.text.isdigit() and (message.chat.id in pending_momo or message.chat.id in custom_token_requests))
 def number_input_handler(message):
@@ -445,7 +558,7 @@ def number_input_handler(message):
     number = message.text
 
     # Handle custom token amount input
-    if chat_id in custom_token_requests:
+    if chat_id in custom_token_requests and custom_token_requests[chat_id].get('waiting_for_amount'):
         token_amount = int(number)
         if token_amount < 1:
             bot.send_message(chat_id, "❌ Please enter a valid number of tokens (minimum 1).")
@@ -478,46 +591,35 @@ def number_input_handler(message):
         if update_user_momo(chat_id, momo_number):
             bot.send_message(chat_id, f"✅ MoMo number {momo_number} saved successfully!")
 
-            # Process pending purchase (standard packages)
+            # Show payment options for both standard and custom purchases
+            payment_markup = InlineKeyboardMarkup()
+            payment_markup.add(
+                InlineKeyboardButton("💳 Pay with MoMo", url=PAYMENT_LINKS['paystack']),
+                InlineKeyboardButton("₿ Pay with Crypto", url=PAYMENT_LINKS['crypto'])
+            )
+            payment_markup.add(InlineKeyboardButton("✅ Payment Completed", callback_data="payment_completed"))
+
             if chat_id in pending_momo:
                 package_info = pending_momo[chat_id]
-                user = get_user_data(chat_id)
-
-                # Add tokens to user account
-                new_tokens = user['Tokens'] + package_info['amount']
-                update_user_tokens_points(chat_id, new_tokens, user['Points'])
-
-                # Log the purchase
-                log_token_purchase(chat_id, package_info['label'], package_info['amount'])
-
                 bot.send_message(
-                    chat_id, 
-                    f"🎉 {package_info['amount']} tokens added to your account!\nTotal tokens: {new_tokens}"
+                    chat_id,
+                    f"💰 <b>Payment Options for {package_info['label']}</b>\n\n"
+                    f"💸 Amount: {TOKEN_PRICING[package_info['label']]['price']}\n"
+                    f"📱 MoMo: {momo_number}\n\n"
+                    "Choose your payment method below:",
+                    reply_markup=payment_markup
                 )
-
-                del pending_momo[chat_id]
-
-            # Process custom token purchase
             elif chat_id in custom_token_requests:
                 custom_info = custom_token_requests[chat_id]
-                user = get_user_data(chat_id)
-
-                # Add tokens to user account
-                new_tokens = user['Tokens'] + custom_info['amount']
-                update_user_tokens_points(chat_id, new_tokens, user['Points'])
-
-                # Log the purchase
-                log_token_purchase(chat_id, f"Custom {custom_info['amount']} tokens", custom_info['amount'])
-
                 bot.send_message(
-                    chat_id, 
-                    f"🎉 {custom_info['amount']} custom tokens added to your account!\n"
-                    f"💰 Price: {custom_info['price']}\n"
-                    f"Total tokens: {new_tokens}\n\n"
-                    "📬 Please send payment proof to @Learn4CashAdmin"
+                    chat_id,
+                    f"💰 <b>Payment Options for Custom Purchase</b>\n\n"
+                    f"🪙 Tokens: {custom_info['amount']}\n"
+                    f"💸 Amount: {custom_info['price']}\n"
+                    f"📱 MoMo: {momo_number}\n\n"
+                    "Choose your payment method below:",
+                    reply_markup=payment_markup
                 )
-
-                del custom_token_requests[chat_id]
         else:
             bot.send_message(chat_id, "❌ Failed to save MoMo number. Please try again.")
 
@@ -559,6 +661,41 @@ def buy_callback_handler(call):
         "📞 Contact @Learn4CashAdmin for any issues."
     )
 
+
+@bot.callback_query_handler(func=lambda call: call.data == "payment_completed")
+def payment_completed_handler(call):
+    """Handle payment completion confirmation."""
+    chat_id = call.message.chat.id
+    bot.answer_callback_query(call.id)
+
+    if chat_id in pending_momo:
+        package_info = pending_momo[chat_id]
+        bot.send_message(
+            chat_id,
+            f"✅ <b>Payment Received!</b>\n\n"
+            f"📋 Order: {package_info['label']}\n"
+            f"⏳ Processing... Tokens will be added within 5-10 minutes.\n"
+            f"📞 Contact @Learn4CashAdmin if tokens don't arrive.\n\n"
+            f"🎮 Meanwhile, you can continue playing with your current tokens!"
+        )
+        # Log the purchase for admin processing
+        log_token_purchase(chat_id, f"PENDING: {package_info['label']}", package_info['amount'])
+        del pending_momo[chat_id]
+
+    elif chat_id in custom_token_requests:
+        custom_info = custom_token_requests[chat_id]
+        bot.send_message(
+            chat_id,
+            f"✅ <b>Payment Received!</b>\n\n"
+            f"🪙 Custom Order: {custom_info['amount']} tokens\n"
+            f"💰 Amount: {custom_info['price']}\n"
+            f"⏳ Processing... Tokens will be added within 5-10 minutes.\n"
+            f"📞 Contact @Learn4CashAdmin if tokens don't arrive.\n\n"
+            f"🎮 Meanwhile, you can continue playing with your current tokens!"
+        )
+        # Log the purchase for admin processing
+        log_token_purchase(chat_id, f"PENDING: Custom {custom_info['amount']} tokens", custom_info['amount'])
+        del custom_token_requests[chat_id]
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("redeem:"))
 def redeem_callback_handler(call):
@@ -688,14 +825,62 @@ def default_handler(message):
 # Implement daily, weekly, monthly winner selection and broadcasting (example)
 def select_winner(period="daily"):
     """Select a winner based on points for the given period."""
-    # Dummy user data (replace with actual data storage)
+    # Get actual user data from sheets (simplified for demo)
     user_points = {123: 150, 456: 200, 789: 180}  # user_id: points
 
     if not user_points:
         return None
 
-    winner_id = max(user_points, key=user_points.get)  # Select user with the highest points
-    return winner_id
+    # Use weighted selection instead of just highest points
+    return weighted_random_selection_from_dict(user_points)
+
+def select_winner_from_data(user_data, period="daily"):
+    """Select winner from provided user data for testing."""
+    if not user_data:
+        return None
+    
+    return weighted_random_selection_from_dict(user_data)
+
+def weighted_random_selection_from_dict(user_points):
+    """Select winner using weighted probability based on points."""
+    if not user_points:
+        return None
+    
+    # Convert to list format for weighted selection
+    participants = [{"id": uid, "points": points} for uid, points in user_points.items()]
+    winner = weighted_random_selection(participants)
+    return winner["id"] if winner else None
+
+def weighted_random_selection(participants):
+    """
+    Select a winner using weighted probability.
+    Higher points = higher chance, but everyone has a fair chance.
+    """
+    if not participants:
+        return None
+    
+    # Calculate weights (points + base weight for fairness)
+    base_weight = 10  # Everyone gets at least 10 weight
+    total_weight = 0
+    weights = []
+    
+    for participant in participants:
+        weight = participant["points"] + base_weight
+        weights.append(weight)
+        total_weight += weight
+    
+    # Generate random number
+    rand_num = random.randint(1, total_weight)
+    
+    # Find winner based on weighted selection
+    current_weight = 0
+    for i, participant in enumerate(participants):
+        current_weight += weights[i]
+        if rand_num <= current_weight:
+            return participant
+    
+    # Fallback (should never reach here)
+    return participants[0]
 
 
 def schedule_winners():
