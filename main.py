@@ -1,4 +1,3 @@
-
 """
 Learn4Cash Quiz Bot - A Telegram bot for educational quizzes with token system.
 """
@@ -88,13 +87,16 @@ REDEEM_OPTIONS = {
     "GHS 2 Airtime": {"points": 100, "reward": "GHS 2 Airtime"},
     "GHS 5 Airtime": {"points": 250, "reward": "GHS 5 Airtime"},
     "GHS 10 Airtime": {"points": 500, "reward": "GHS 10 Airtime"},
+    "Internet Data": {"points": 300, "reward": "500MB Data"},
+    "MoMo": {"points": 400, "reward": "GHS 3 MoMo"},
     "2 USDT": {"points": 600, "reward": "2 USDT (Crypto)"},
     "5 USDT": {"points": 1500, "reward": "5 USDT (Crypto)"}
 }
 
 PAYMENT_LINKS = {
     "momo": "https://paystack.com/pay/momo-learn4cash",
-    "crypto": "https://buycrypto.learn4cash.io"
+    "crypto": "https://buycrypto.learn4cash.io",
+    "paystack": "https://paystack.shop/pay/6yjmo6ykwr"
 }
 
 PAYMENT_INFO = """
@@ -120,9 +122,37 @@ def create_main_menu():
         KeyboardButton("🎁 Daily Reward"),
         KeyboardButton("📊 My Stats"),
         KeyboardButton("👥 Referrals"),
-        KeyboardButton("ℹ️ Help")
+        KeyboardButton("ℹ️ Help"),
+        KeyboardButton("🏆 Leaderboard")  # Added leaderboard button
     )
     return markup
+
+
+# Implement leaderboard functionality (Example)
+def update_leaderboard(user_id, points):
+    """Update the leaderboard with user points."""
+    # Dummy leaderboard (replace with actual data storage)
+    leaderboard = {}  # user_id: points
+
+    leaderboard[user_id] = points
+    sorted_leaderboard = sorted(leaderboard.items(), key=lambda item: item[1], reverse=True)
+    return sorted_leaderboard
+
+
+def get_top_users(limit=10):
+    """Get the top users from the leaderboard."""
+    # Dummy leaderboard (replace with actual data storage)
+    leaderboard = {123: 100, 456: 200, 789: 150}  # user_id: points
+    sorted_leaderboard = sorted(leaderboard.items(), key=lambda item: item[1], reverse=True)
+    return sorted_leaderboard[:limit]
+
+
+def broadcast_winner(winner_id, period="daily"):
+    """Broadcast the winner to all players (example)."""
+    # Placeholder for broadcasting logic (e.g., sending a message to all users)
+    message = f"🎉 Congrats to user {winner_id} for winning the {period} reward!"
+    # Add logic to send this message to all users or a broadcast channel
+    logger.info(message)  # Log the broadcast message for testing
 
 
 @bot.message_handler(commands=['start'])
@@ -130,7 +160,7 @@ def start_handler(message):
     """Handle the /start command."""
     chat_id = message.chat.id
     user = message.from_user
-    
+
     # Parse referral code if present
     referrer_id = None
     if len(message.text.split()) > 1:
@@ -138,7 +168,7 @@ def start_handler(message):
             referrer_id = int(message.text.split()[1])
         except ValueError:
             pass
-    
+
     # Register user
     success = register_user(
         user_id=chat_id,
@@ -146,19 +176,19 @@ def start_handler(message):
         username=user.username or "",
         referrer_id=referrer_id
     )
-    
+
     if success and referrer_id:
         # Reward referrer
         reward_referrer(referrer_id)
         increment_referral_count(referrer_id)
         bot.send_message(referrer_id, "🎉 You got a new referral! +1 token added to your account.")
-    
+
     # Check for daily reward
     daily_reward_given = check_and_give_daily_reward(chat_id)
-    
+
     # Send motivational message
     motivation = random.choice(MOTIVATIONAL_MESSAGES)
-    
+
     welcome_msg = f"""
 🎓 <b>Welcome to Learn4Cash Quiz Bot!</b>
 
@@ -173,10 +203,10 @@ Hello {user.first_name}! Ready to earn while you learn?
 
 Use the menu below to get started!
     """
-    
+
     if daily_reward_given:
         welcome_msg += "\n\n🎉 <b>Daily Bonus:</b> +1 free token added to your account!"
-    
+
     bot.send_message(chat_id, welcome_msg, reply_markup=create_main_menu())
 
 
@@ -185,32 +215,32 @@ def play_handler(message):
     """Handle the play quiz request."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
-    
+
     if user['Tokens'] <= 0:
         bot.send_message(chat_id, "⚠️ You don't have any tokens! Use '💰 Buy Tokens' to continue playing.")
         return
-    
+
     if chat_id in current_question:
         bot.send_message(chat_id, "You already have an active question. Please answer it first.")
         return
-    
+
     # Deduct token
     new_tokens = user['Tokens'] - 1
     update_user_tokens_points(chat_id, new_tokens, user['Points'])
-    
+
     # Select random quiz
     quiz = random.choice(quizzes)
     current_question[chat_id] = {'correct': quiz['a']}
-    
+
     # Create inline keyboard
     markup = InlineKeyboardMarkup()
     for choice in quiz['choices']:
         markup.add(InlineKeyboardButton(choice, callback_data=choice))
-    
+
     bot.send_message(
         chat_id, 
         f"🧠 <b>Question:</b>\n{quiz['q']}\n\n💰 Remaining tokens: {new_tokens}", 
@@ -223,18 +253,18 @@ def buytokens_handler(message):
     """Handle the buy tokens request."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
-    
+
     markup = InlineKeyboardMarkup()
     for label, data in TOKEN_PRICING.items():
         markup.add(InlineKeyboardButton(label, callback_data=f"buy:{label}"))
-    
+
     # Add custom token option
     markup.add(InlineKeyboardButton("🎯 Custom Amount", callback_data="buy:custom"))
-    
+
     bot.send_message(
         chat_id,
         "💰 <b>Choose a token package:</b>\n\n" + PAYMENT_INFO,
@@ -247,21 +277,21 @@ def redeem_handler(message):
     """Handle the redeem rewards request."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
 
     points = user['Points']
     markup = InlineKeyboardMarkup()
-    
+
     for label, reward in REDEEM_OPTIONS.items():
         if points >= reward['points']:
             markup.add(InlineKeyboardButton(
                 text=f"{label} ({reward['points']} pts)", 
                 callback_data=f"redeem:{label}"
             ))
-    
+
     if markup.keyboard:
         bot.send_message(
             chat_id, 
@@ -277,11 +307,11 @@ def stats_handler(message):
     """Handle the stats request."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
-    
+
     stats_msg = f"""
 📊 <b>Your Stats</b>
 
@@ -291,7 +321,7 @@ def stats_handler(message):
 👥 Referrals: {int(user['ReferralEarnings'])}
 💰 MoMo: {user['MoMoNumber'] or 'Not set'}
     """
-    
+
     bot.send_message(chat_id, stats_msg)
 
 
@@ -300,11 +330,11 @@ def referrals_handler(message):
     """Handle the referrals request."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
-    
+
     referral_link = f"https://t.me/Learn4CashBot?start={chat_id}"
     referral_msg = f"""
 👥 <b>Referral Program</b>
@@ -317,7 +347,7 @@ def referrals_handler(message):
 
 Share this link with friends to earn rewards!
     """
-    
+
     bot.send_message(chat_id, referral_msg)
 
 
@@ -326,15 +356,15 @@ def daily_reward_handler(message):
     """Handle the daily reward request."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
-    
+
     # Check for daily reward
     daily_reward_given = check_and_give_daily_reward(chat_id)
     motivation = random.choice(MOTIVATIONAL_MESSAGES)
-    
+
     if daily_reward_given:
         updated_user = get_user_data(chat_id)
         bot.send_message(
@@ -387,8 +417,25 @@ def help_handler(message):
 
 Need more help? Contact @Learn4CashAdmin
     """
-    
+
     bot.send_message(message.chat.id, help_msg)
+
+
+@bot.message_handler(func=lambda message: message.text == "🏆 Leaderboard")
+def leaderboard_handler(message):
+    """Handle the leaderboard request."""
+    chat_id = message.chat.id
+    top_users = get_top_users()
+
+    if not top_users:
+        bot.send_message(chat_id, "📊 Leaderboard is empty.")
+        return
+
+    leaderboard_msg = "🏆 <b>Leaderboard</b> 🏆\n\n"
+    for i, (user_id, points) in enumerate(top_users):
+        leaderboard_msg += f"{i + 1}. User {user_id}: {points} points\n"  # Replace user_id with actual username
+
+    bot.send_message(chat_id, leaderboard_msg)
 
 
 @bot.message_handler(func=lambda message: message.text.isdigit() and (message.chat.id in pending_momo or message.chat.id in custom_token_requests))
@@ -396,7 +443,7 @@ def number_input_handler(message):
     """Handle MoMo number input or custom token amount input."""
     chat_id = message.chat.id
     number = message.text
-    
+
     # Handle custom token amount input
     if chat_id in custom_token_requests:
         token_amount = int(number)
@@ -406,62 +453,62 @@ def number_input_handler(message):
         if token_amount > 100:
             bot.send_message(chat_id, "❌ Maximum 100 tokens per purchase. Please contact admin for larger amounts.")
             return
-            
+
         # Calculate price (₵0.4 per token based on 5 tokens for ₵2)
         price_cedis = round(token_amount * 0.4, 2)
-        
+
         custom_token_requests[chat_id] = {
             'amount': token_amount,
             'price': f"{price_cedis} GHS",
             'waiting_for_momo': True
         }
-        
+
         bot.send_message(
             chat_id,
             f"💰 <b>Custom Order:</b> {token_amount} tokens for ₵{price_cedis}\n\n"
             "📲 Please send your MoMo number to proceed with payment."
         )
         return
-    
+
     # Handle MoMo number input
     if chat_id in pending_momo or (chat_id in custom_token_requests and custom_token_requests[chat_id].get('waiting_for_momo')):
         momo_number = number
-        
+
         # Update user's MoMo number
         if update_user_momo(chat_id, momo_number):
             bot.send_message(chat_id, f"✅ MoMo number {momo_number} saved successfully!")
-            
+
             # Process pending purchase (standard packages)
             if chat_id in pending_momo:
                 package_info = pending_momo[chat_id]
                 user = get_user_data(chat_id)
-                
+
                 # Add tokens to user account
                 new_tokens = user['Tokens'] + package_info['amount']
                 update_user_tokens_points(chat_id, new_tokens, user['Points'])
-                
+
                 # Log the purchase
                 log_token_purchase(chat_id, package_info['label'], package_info['amount'])
-                
+
                 bot.send_message(
                     chat_id, 
                     f"🎉 {package_info['amount']} tokens added to your account!\nTotal tokens: {new_tokens}"
                 )
-                
+
                 del pending_momo[chat_id]
-            
+
             # Process custom token purchase
             elif chat_id in custom_token_requests:
                 custom_info = custom_token_requests[chat_id]
                 user = get_user_data(chat_id)
-                
+
                 # Add tokens to user account
                 new_tokens = user['Tokens'] + custom_info['amount']
                 update_user_tokens_points(chat_id, new_tokens, user['Points'])
-                
+
                 # Log the purchase
                 log_token_purchase(chat_id, f"Custom {custom_info['amount']} tokens", custom_info['amount'])
-                
+
                 bot.send_message(
                     chat_id, 
                     f"🎉 {custom_info['amount']} custom tokens added to your account!\n"
@@ -469,7 +516,7 @@ def number_input_handler(message):
                     f"Total tokens: {new_tokens}\n\n"
                     "📬 Please send payment proof to @Learn4CashAdmin"
                 )
-                
+
                 del custom_token_requests[chat_id]
         else:
             bot.send_message(chat_id, "❌ Failed to save MoMo number. Please try again.")
@@ -480,9 +527,9 @@ def buy_callback_handler(call):
     """Handle token purchase callbacks."""
     chat_id = call.message.chat.id
     package_label = call.data.split("buy:")[1]
-    
+
     bot.answer_callback_query(call.id)
-    
+
     if package_label == "custom":
         custom_token_requests[chat_id] = {'waiting_for_amount': True}
         bot.send_message(
@@ -492,22 +539,22 @@ def buy_callback_handler(call):
             "💡 <i>Rate: ₵0.40 per token</i>"
         )
         return
-    
+
     package_info = TOKEN_PRICING[package_label]
-    
+
     pending_momo[chat_id] = {
         'label': package_label,
         'amount': package_info['amount']
     }
-    
+
     bot.send_message(
         chat_id,
         f"💰 You selected: <b>{package_label}</b>\n\n"
         f"📲 Please send your MoMo number to complete the purchase.\n"
         f"💸 Price: {package_info['price']}\n\n"
         "After sending your MoMo number:\n"
-        "📱 Make payment via MoMo: 0551234567\n"
-        "💳 Or pay crypto (USDT): Check payment links\n"
+        f"💳 Pay securely via: {PAYMENT_LINKS['paystack']}\n"
+        "💰 Or pay crypto (USDT): Check payment links\n"
         "🔄 Tokens will be added automatically after payment confirmation!\n"
         "📞 Contact @Learn4CashAdmin for any issues."
     )
@@ -526,7 +573,7 @@ def redeem_callback_handler(call):
         return
 
     new_points = user['Points'] - reward['points']
-    
+
     # Handle special case for token redemption
     if "Token" in label and label.endswith("Token") or label.endswith("Tokens"):
         # Extract token amount from label
@@ -535,19 +582,28 @@ def redeem_callback_handler(call):
             token_amount = 3
         elif label == "5 Tokens":
             token_amount = 5
-            
+
         new_tokens = user['Tokens'] + token_amount
         update_user_tokens_points(chat_id, new_tokens, new_points)
-        
+
         bot.answer_callback_query(call.id, f"✅ {token_amount} token(s) added!")
         bot.send_message(chat_id, f"🎉 {token_amount} token(s) have been credited immediately!")
-        
+
         # Auto-start next game after short delay
         time.sleep(2)
         play_handler(message=type('obj', (object,), {'chat': type('obj', (object,), {'id': chat_id})()})())
+    # Handle other reward options (Airtime, MoMo, Data, Crypto)
+    elif "Airtime" in label or "MoMo" in label or "Data" in label or "USDT" in label:
+        update_user_tokens_points(chat_id, user['Tokens'], new_points)
+        bot.answer_callback_query(call.id, "✅ Redemption submitted!")
+        bot.send_message(
+            chat_id,
+            f"✅ You've redeemed <b>{label}</b>. Admin will process your reward soon.\n"
+            "📬 Contact @Learn4CashAdmin for confirmation."
+        )
     else:
         update_user_tokens_points(chat_id, user['Tokens'], new_points)
-        
+
         bot.answer_callback_query(call.id, "✅ Redemption submitted!")
         bot.send_message(
             chat_id, 
@@ -567,7 +623,7 @@ def answer_handler(call):
     """Handle quiz answer callbacks."""
     chat_id = call.message.chat.id
     user = get_user_data(chat_id)
-    
+
     if not user or chat_id not in current_question:
         bot.answer_callback_query(call.id, "❌ Invalid question!")
         return
@@ -588,7 +644,7 @@ def answer_handler(call):
     # Update user data
     update_user_tokens_points(chat_id, tokens, points)
     bot.send_message(chat_id, f"💰 Balance: {tokens} tokens | {points} points")
-    
+
     # Clean up current question
     del current_question[chat_id]
 
@@ -613,7 +669,7 @@ def custom_token_amount_handler(message):
 def default_handler(message):
     """Handle all other messages."""
     chat_id = message.chat.id
-    
+
     # Check if user is in custom token flow
     if chat_id in custom_token_requests:
         if custom_token_requests[chat_id].get('waiting_for_amount'):
@@ -622,16 +678,64 @@ def default_handler(message):
         elif custom_token_requests[chat_id].get('waiting_for_momo'):
             bot.send_message(chat_id, "Please enter your MoMo number (digits only).")
             return
-    
+
     bot.send_message(
         chat_id, 
         "Please use the menu buttons below or type /start to begin.",
         reply_markup=create_main_menu()
     )
 
+# Implement daily, weekly, monthly winner selection and broadcasting (example)
+def select_winner(period="daily"):
+    """Select a winner based on points for the given period."""
+    # Dummy user data (replace with actual data storage)
+    user_points = {123: 150, 456: 200, 789: 180}  # user_id: points
+
+    if not user_points:
+        return None
+
+    winner_id = max(user_points, key=user_points.get)  # Select user with the highest points
+    return winner_id
+
+
+def schedule_winners():
+    """Schedule daily, weekly, and monthly winner selection."""
+    while True:
+        now = datetime.now()
+
+        # Daily winner selection (at 00:00)
+        if now.hour == 0 and now.minute == 0:
+            daily_winner = select_winner("daily")
+            if daily_winner:
+                broadcast_winner(daily_winner, "daily")
+            time.sleep(60)  # Prevent multiple selections in the same minute
+
+        # Weekly winner selection (every Sunday at 00:00)
+        if now.weekday() == 6 and now.hour == 0 and now.minute == 0:
+            weekly_winner = select_winner("weekly")
+            if weekly_winner:
+                broadcast_winner(weekly_winner, "weekly")
+            time.sleep(60)
+
+        # Monthly winner selection (on the 1st of each month at 00:00)
+        if now.day == 1 and now.hour == 0 and now.minute == 0:
+            monthly_winner = select_winner("monthly")
+            if monthly_winner:
+                broadcast_winner(monthly_winner, "monthly")
+            time.sleep(60)
+
+        time.sleep(30)  # Check every 30 seconds
+
 
 if __name__ == "__main__":
     logger.info("Starting Learn4Cash Quiz Bot...")
+
+    # Start the scheduler in a separate thread
+    import threading
+    scheduler_thread = threading.Thread(target=schedule_winners)
+    scheduler_thread.daemon = True  # Allow the main program to exit even if the thread is running
+    scheduler_thread.start()
+
     try:
         bot.infinity_polling(timeout=10, long_polling_timeout=5)
     except Exception as e:
