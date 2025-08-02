@@ -51,19 +51,24 @@ quizzes = [
 # Global state
 pending_momo = {}
 current_question = {}
+custom_token_requests = {}
 
 # Configuration constants
 TOKEN_PRICING = {
-    "1 token (₵2 or $0.20)": {"amount": 1, "price": "2 GHS / 0.20 USD"},
-    "5 tokens (₵9 or $0.90)": {"amount": 5, "price": "9 GHS / 0.90 USD"},
-    "10 tokens (₵17 or $1.70)": {"amount": 10, "price": "17 GHS / 1.70 USD"}
+    "5 tokens (₵2)": {"amount": 5, "price": "2 GHS"},
+    "12 tokens (₵5)": {"amount": 12, "price": "5 GHS"},
+    "30 tokens (₵10)": {"amount": 30, "price": "10 GHS"}
 }
 
 REDEEM_OPTIONS = {
-    "1 Token": {"points": 100, "reward": "+1 Token"},
+    "1 Token": {"points": 30, "reward": "+1 Token"},
+    "3 Tokens": {"points": 90, "reward": "+3 Tokens"},
+    "5 Tokens": {"points": 150, "reward": "+5 Tokens"},
+    "GHS 2 Airtime": {"points": 100, "reward": "GHS 2 Airtime"},
     "GHS 5 Airtime": {"points": 250, "reward": "GHS 5 Airtime"},
-    "GHS 10 Airtime": {"points": 400, "reward": "GHS 10 Airtime"},
-    "5 USDT": {"points": 800, "reward": "5 USDT (Crypto)"}
+    "GHS 10 Airtime": {"points": 500, "reward": "GHS 10 Airtime"},
+    "2 USDT": {"points": 600, "reward": "2 USDT (Crypto)"},
+    "5 USDT": {"points": 1500, "reward": "5 USDT (Crypto)"}
 }
 
 PAYMENT_LINKS = {
@@ -193,6 +198,9 @@ def buytokens_handler(message):
     for label, data in TOKEN_PRICING.items():
         markup.add(InlineKeyboardButton(label, callback_data=f"buy:{label}"))
     
+    # Add custom token option
+    markup.add(InlineKeyboardButton("🎯 Custom Amount", callback_data="buy:custom"))
+    
     bot.send_message(
         chat_id,
         "💰 <b>Choose a token package:</b>\n\n" + PAYMENT_INFO,
@@ -311,36 +319,88 @@ Need more help? Contact @Learn4CashAdmin
     bot.send_message(message.chat.id, help_msg)
 
 
-@bot.message_handler(func=lambda message: message.text.isdigit() and message.chat.id in pending_momo)
-def momo_number_handler(message):
-    """Handle MoMo number input."""
+@bot.message_handler(func=lambda message: message.text.isdigit() and (message.chat.id in pending_momo or message.chat.id in custom_token_requests))
+def number_input_handler(message):
+    """Handle MoMo number input or custom token amount input."""
     chat_id = message.chat.id
-    momo_number = message.text
+    number = message.text
     
-    # Update user's MoMo number
-    if update_user_momo(chat_id, momo_number):
-        bot.send_message(chat_id, f"✅ MoMo number {momo_number} saved successfully!")
+    # Handle custom token amount input
+    if chat_id in custom_token_requests:
+        token_amount = int(number)
+        if token_amount < 1:
+            bot.send_message(chat_id, "❌ Please enter a valid number of tokens (minimum 1).")
+            return
+        if token_amount > 100:
+            bot.send_message(chat_id, "❌ Maximum 100 tokens per purchase. Please contact admin for larger amounts.")
+            return
+            
+        # Calculate price (₵0.4 per token based on 5 tokens for ₵2)
+        price_cedis = round(token_amount * 0.4, 2)
         
-        # Process the pending purchase
-        if chat_id in pending_momo:
-            package_info = pending_momo[chat_id]
-            user = get_user_data(chat_id)
+        custom_token_requests[chat_id] = {
+            'amount': token_amount,
+            'price': f"{price_cedis} GHS",
+            'waiting_for_momo': True
+        }
+        
+        bot.send_message(
+            chat_id,
+            f"💰 <b>Custom Order:</b> {token_amount} tokens for ₵{price_cedis}\n\n"
+            "📲 Please send your MoMo number to proceed with payment."
+        )
+        return
+    
+    # Handle MoMo number input
+    if chat_id in pending_momo or (chat_id in custom_token_requests and custom_token_requests[chat_id].get('waiting_for_momo')):
+        momo_number = number
+        
+        # Update user's MoMo number
+        if update_user_momo(chat_id, momo_number):
+            bot.send_message(chat_id, f"✅ MoMo number {momo_number} saved successfully!")
             
-            # Add tokens to user account
-            new_tokens = user['Tokens'] + package_info['amount']
-            update_user_tokens_points(chat_id, new_tokens, user['Points'])
+            # Process pending purchase (standard packages)
+            if chat_id in pending_momo:
+                package_info = pending_momo[chat_id]
+                user = get_user_data(chat_id)
+                
+                # Add tokens to user account
+                new_tokens = user['Tokens'] + package_info['amount']
+                update_user_tokens_points(chat_id, new_tokens, user['Points'])
+                
+                # Log the purchase
+                log_token_purchase(chat_id, package_info['label'], package_info['amount'])
+                
+                bot.send_message(
+                    chat_id, 
+                    f"🎉 {package_info['amount']} tokens added to your account!\nTotal tokens: {new_tokens}"
+                )
+                
+                del pending_momo[chat_id]
             
-            # Log the purchase
-            log_token_purchase(chat_id, package_info['label'], package_info['amount'])
-            
-            bot.send_message(
-                chat_id, 
-                f"🎉 {package_info['amount']} tokens added to your account!\nTotal tokens: {new_tokens}"
-            )
-            
-            del pending_momo[chat_id]
-    else:
-        bot.send_message(chat_id, "❌ Failed to save MoMo number. Please try again.")
+            # Process custom token purchase
+            elif chat_id in custom_token_requests:
+                custom_info = custom_token_requests[chat_id]
+                user = get_user_data(chat_id)
+                
+                # Add tokens to user account
+                new_tokens = user['Tokens'] + custom_info['amount']
+                update_user_tokens_points(chat_id, new_tokens, user['Points'])
+                
+                # Log the purchase
+                log_token_purchase(chat_id, f"Custom {custom_info['amount']} tokens", custom_info['amount'])
+                
+                bot.send_message(
+                    chat_id, 
+                    f"🎉 {custom_info['amount']} custom tokens added to your account!\n"
+                    f"💰 Price: {custom_info['price']}\n"
+                    f"Total tokens: {new_tokens}\n\n"
+                    "📬 Please send payment proof to @Learn4CashAdmin"
+                )
+                
+                del custom_token_requests[chat_id]
+        else:
+            bot.send_message(chat_id, "❌ Failed to save MoMo number. Please try again.")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy:"))
@@ -348,6 +408,19 @@ def buy_callback_handler(call):
     """Handle token purchase callbacks."""
     chat_id = call.message.chat.id
     package_label = call.data.split("buy:")[1]
+    
+    bot.answer_callback_query(call.id)
+    
+    if package_label == "custom":
+        custom_token_requests[chat_id] = {'waiting_for_amount': True}
+        bot.send_message(
+            chat_id,
+            "🎯 <b>Custom Token Purchase</b>\n\n"
+            "Please enter the number of tokens you want to buy (1-100):\n\n"
+            "💡 <i>Rate: ₵0.40 per token</i>"
+        )
+        return
+    
     package_info = TOKEN_PRICING[package_label]
     
     pending_momo[chat_id] = {
@@ -355,7 +428,6 @@ def buy_callback_handler(call):
         'amount': package_info['amount']
     }
     
-    bot.answer_callback_query(call.id)
     bot.send_message(
         chat_id,
         f"💰 You selected: <b>{package_label}</b>\n\n"
@@ -380,12 +452,19 @@ def redeem_callback_handler(call):
     new_points = user['Points'] - reward['points']
     
     # Handle special case for token redemption
-    if label == "1 Token":
-        new_tokens = user['Tokens'] + 1
+    if "Token" in label and label.endswith("Token") or label.endswith("Tokens"):
+        # Extract token amount from label
+        token_amount = 1
+        if label == "3 Tokens":
+            token_amount = 3
+        elif label == "5 Tokens":
+            token_amount = 5
+            
+        new_tokens = user['Tokens'] + token_amount
         update_user_tokens_points(chat_id, new_tokens, new_points)
         
-        bot.answer_callback_query(call.id, "✅ Token added!")
-        bot.send_message(chat_id, "🎉 Your token has been credited immediately!")
+        bot.answer_callback_query(call.id, f"✅ {token_amount} token(s) added!")
+        bot.send_message(chat_id, f"🎉 {token_amount} token(s) have been credited immediately!")
         
         # Auto-start next game after short delay
         time.sleep(2)
@@ -449,11 +528,27 @@ def answer_handler(call):
         )
 
 
+@bot.message_handler(func=lambda message: message.text.isdigit() and message.chat.id in custom_token_requests and custom_token_requests[message.chat.id].get('waiting_for_amount'))
+def custom_token_amount_handler(message):
+    """Handle custom token amount input."""
+    number_input_handler(message)
+
 @bot.message_handler(func=lambda message: True)
 def default_handler(message):
     """Handle all other messages."""
+    chat_id = message.chat.id
+    
+    # Check if user is in custom token flow
+    if chat_id in custom_token_requests:
+        if custom_token_requests[chat_id].get('waiting_for_amount'):
+            bot.send_message(chat_id, "Please enter a valid number for tokens (1-100).")
+            return
+        elif custom_token_requests[chat_id].get('waiting_for_momo'):
+            bot.send_message(chat_id, "Please enter your MoMo number (digits only).")
+            return
+    
     bot.send_message(
-        message.chat.id, 
+        chat_id, 
         "Please use the menu buttons below or type /start to begin.",
         reply_markup=create_main_menu()
     )
