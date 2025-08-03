@@ -1588,7 +1588,7 @@ if __name__ == "__main__":
     # Set admin chat IDs (replace with actual admin user IDs)
     # Example: ADMIN_CHAT_IDS = [123456789, 987654321]
     # Add your actual admin user IDs here
-    ADMIN_CHAT_IDS = [123456789]  # Replace with your actual admin user ID(s)
+    ADMIN_CHAT_IDS = [2145372547]  # Your actual admin user ID
 
     # Start event scheduler in a separate thread
     scheduler_thread = threading.Thread(target=schedule_events)
