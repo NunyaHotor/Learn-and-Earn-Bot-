@@ -489,6 +489,18 @@ class SheetManager:
             logger.error(f"Unexpected error updating claim date for {user_id}: {e}")
             return False
 
+    def get_all_users(self):
+        """Get all user records for leaderboard and broadcasting."""
+        try:
+            records = self.main_sheet.get_all_records()
+            return records
+        except APIError as e:
+            logger.error(f"API error getting all users: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting all users: {e}")
+            return []
+
     @staticmethod
     def _safe_float(value: Any, default: float = 0.0) -> float:
         """Safely convert value to float."""
@@ -562,3 +574,8 @@ def check_and_give_daily_reward(user_id: int) -> bool:
 def update_last_claim_date(user_id: int) -> bool:
     """Update last claim date (backward compatibility)."""
     return get_sheet_manager().update_last_claim_date(user_id)
+
+
+def get_all_users():
+    """Get all users (backward compatibility)."""
+    return get_sheet_manager().get_all_users()

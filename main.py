@@ -10,6 +10,8 @@ from datetime import datetime
 import time
 import logging
 import threading
+import json
+import os
 
 from sheet_manager import (
     register_user,
@@ -21,7 +23,8 @@ from sheet_manager import (
     log_point_redemption,
     update_user_momo,
     check_and_give_daily_reward,
-    update_last_claim_date
+    update_last_claim_date,
+    get_sheet_manager
 )
 
 # Configure logging
@@ -80,9 +83,12 @@ quizzes = [
 # Global state
 current_question = {}
 custom_token_requests = {}
-player_progress = {}  # Track player progress and streaks
-skipped_questions = {}  # Track skipped questions per user
-paused_games = {}  # Track paused games
+player_progress = {}
+skipped_questions = {}
+paused_games = {}
+pending_token_purchases = {}  # Track pending purchases for verification
+user_question_pools = {}  # Track used questions per user
+all_users = set()  # Track all registered users
 
 # Motivational messages
 MOTIVATIONAL_MESSAGES = [
@@ -104,8 +110,9 @@ MOTIVATIONAL_MESSAGES = [
 ]
 
 # Configuration constants
-ADMIN_CHAT_ID = None  # Set this to admin's chat ID for notifications
-USD_TO_CEDIS_RATE = 15.8  # Exchange rate (update as needed)
+ADMIN_CHAT_ID = None  # Set admin chat ID for notifications
+USD_TO_CEDIS_RATE = 15.8
+PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
 
 TOKEN_PRICING = {
     "5 tokens": {"amount": 5, "price_cedis": 2, "price_usd": round(2/USD_TO_CEDIS_RATE, 2)},
@@ -113,38 +120,65 @@ TOKEN_PRICING = {
     "30 tokens": {"amount": 30, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
 }
 
+# Updated reward system: 1 token = 20 points
 REDEEM_OPTIONS = {
-    "1 Token": {"points": 30, "reward": "+1 Token", "cedis": 0.4, "usd": round(0.4/USD_TO_CEDIS_RATE, 2)},
-    "3 Tokens": {"points": 90, "reward": "+3 Tokens", "cedis": 1.2, "usd": round(1.2/USD_TO_CEDIS_RATE, 2)},
-    "5 Tokens": {"points": 150, "reward": "+5 Tokens", "cedis": 2.0, "usd": round(2.0/USD_TO_CEDIS_RATE, 2)},
-    "GHS 2 Airtime": {"points": 100, "reward": "GHS 2 Airtime", "cedis": 2, "usd": round(2/USD_TO_CEDIS_RATE, 2)},
-    "GHS 5 Airtime": {"points": 250, "reward": "GHS 5 Airtime", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
+    "1 Token": {"points": 20, "reward": "+1 Token", "cedis": 0.4, "usd": round(0.4/USD_TO_CEDIS_RATE, 2)},
+    "3 Tokens": {"points": 60, "reward": "+3 Tokens", "cedis": 1.2, "usd": round(1.2/USD_TO_CEDIS_RATE, 2)},
+    "5 Tokens": {"points": 100, "reward": "+5 Tokens", "cedis": 2.0, "usd": round(2.0/USD_TO_CEDIS_RATE, 2)},
+    "GHS 2 Airtime": {"points": 150, "reward": "GHS 2 Airtime", "cedis": 2, "usd": round(2/USD_TO_CEDIS_RATE, 2)},
+    "GHS 5 Airtime": {"points": 300, "reward": "GHS 5 Airtime", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
     "GHS 10 Airtime": {"points": 500, "reward": "GHS 10 Airtime", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2)},
-    "Internet Data": {"points": 300, "reward": "500MB Data", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2)},
-    "MoMo": {"points": 400, "reward": "GHS 3 MoMo", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2)},
-    "2 USDT": {"points": 600, "reward": "2 USDT (Crypto)", "cedis": round(2*USD_TO_CEDIS_RATE, 2), "usd": 2},
-    "5 USDT": {"points": 1500, "reward": "5 USDT (Crypto)", "cedis": round(5*USD_TO_CEDIS_RATE, 2), "usd": 5}
+    "500MB Data": {"points": 200, "reward": "500MB Internet Data", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2)},
+    "1GB Data": {"points": 400, "reward": "1GB Internet Data", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
+    "GHS 5 MoMo": {"points": 300, "reward": "GHS 5 MoMo", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
+    "GHS 10 MoMo": {"points": 600, "reward": "GHS 10 MoMo", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2)},
+    "Samsung Phone": {"points": 15000, "reward": "Samsung Galaxy A15", "cedis": 1200, "usd": round(1200/USD_TO_CEDIS_RATE, 2)},
+    "iPhone": {"points": 25000, "reward": "iPhone 13", "cedis": 3500, "usd": round(3500/USD_TO_CEDIS_RATE, 2)},
+    "Budget Laptop": {"points": 20000, "reward": "HP Laptop 14", "cedis": 2800, "usd": round(2800/USD_TO_CEDIS_RATE, 2)},
+    "Gaming Laptop": {"points": 35000, "reward": "Gaming Laptop", "cedis": 5500, "usd": round(5500/USD_TO_CEDIS_RATE, 2)}
 }
 
-# Updated payment information
 PAYMENT_INFO = """
 💸 <b>Payment Instructions</b>
 
 📲 <b>MTN MoMo</b>: 
 • Merchant: <b>474994</b>
 • Name: <b>Sufex Technology</b>
+• Direct Payment: <a href="https://paystack.shop/pay/6yjmo6ykwr">Pay with Paystack</a>
 
 💰 <b>Crypto (USDT TRC20)</b>: 
 • Address: <code>TVd2gJT5Q1ncXqdPmsCFYaiizvgaWbLSGn</code>
 
 📬 Send payment screenshot to @Learn4CashAdmin for verification.
-⚡ Tokens are added automatically after confirmation!
+⚡ Tokens are added manually after payment confirmation!
+"""
+
+# About Us section
+ABOUT_US = """
+🎓 <b>About Learn4Cash</b>
+
+We are a revolutionary educational platform that combines learning with earning. Our mission is to make African history and culture accessible while rewarding knowledge seekers.
+
+🌍 <b>Our Vision:</b>
+To create a generation of well-informed Africans who are proud of their heritage and financially empowered through education.
+
+🎯 <b>What We Do:</b>
+• Interactive African-centered quizzes
+• Real rewards for learning achievements
+• Fair competition system
+• Community building through knowledge
+
+💡 <b>Founded:</b> 2024
+📍 <b>Based:</b> Ghana, West Africa
+🌟 <b>Mission:</b> Education + Earning = Empowerment
 """
 
 WELCOME_MESSAGE = """
 🎓 <b>Welcome to Learn4Cash Quiz Bot!</b>
 
 Hello {name}! Ready to earn while you learn African history and culture?
+
+{about_us}
 
 🎮 <b>How to Play:</b>
 • Answer quiz questions to earn points
@@ -161,7 +195,7 @@ Hello {name}! Ready to earn while you learn African history and culture?
 
 💰 <b>Rewards Available:</b>
 • More tokens • Airtime • Internet data
-• Mobile money • Crypto (USDT)
+• Mobile money • Phones • Laptops
 • Weekly random raffles with prizes!
 
 🎯 <b>Special Features:</b>
@@ -198,14 +232,23 @@ def create_main_menu():
     return markup
 
 
-def create_quiz_controls():
-    """Create quiz control buttons."""
-    markup = InlineKeyboardMarkup()
-    markup.add(
-        InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"),
-        InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")
-    )
-    return markup
+def get_random_quiz(user_id):
+    """Get a random quiz that hasn't been used by this user recently."""
+    if user_id not in user_question_pools:
+        user_question_pools[user_id] = []
+    
+    used_questions = user_question_pools[user_id]
+    available_questions = [q for q in quizzes if q['q'] not in used_questions]
+    
+    # If all questions used, reset pool
+    if not available_questions:
+        user_question_pools[user_id] = []
+        available_questions = quizzes
+    
+    selected_quiz = random.choice(available_questions)
+    user_question_pools[user_id].append(selected_quiz['q'])
+    
+    return selected_quiz
 
 
 def init_player_progress(user_id):
@@ -235,45 +278,126 @@ def update_player_progress(user_id, correct=True):
         progress['total_correct'] += 1
         progress['best_streak'] = max(progress['best_streak'], progress['current_streak'])
         
-        # Check for streak bonus (10 correct answers in a row)
         if progress['current_streak'] == 10:
             progress['questions_until_bonus'] = 10
-            progress['current_streak'] = 0  # Reset streak counter
-            return True  # Indicates bonus earned
+            progress['current_streak'] = 0
+            return True
     else:
         progress['current_streak'] = 0
     
     return False
 
 
-def get_progress_message(user_id):
-    """Get formatted progress message for user."""
-    if user_id not in player_progress:
-        init_player_progress(user_id)
-    
-    progress = player_progress[user_id]
-    accuracy = (progress['total_correct'] / progress['total_questions'] * 100) if progress['total_questions'] > 0 else 0
-    
-    return f"""
-📈 <b>Your Progress Report</b>
+def get_leaderboard():
+    """Get leaderboard data from all users."""
+    try:
+        sheet_manager = get_sheet_manager()
+        all_records = sheet_manager.main_sheet.get_all_records()
+        
+        # Sort by points descending
+        leaderboard = sorted(all_records, key=lambda x: int(x.get('Points', 0)), reverse=True)
+        return leaderboard[:10]  # Top 10
+    except Exception as e:
+        logger.error(f"Error getting leaderboard: {e}")
+        return []
 
-🎯 <b>Performance:</b>
-• Accuracy: {accuracy:.1f}%
-• Total Questions: {progress['total_questions']}
-• Correct Answers: {progress['total_correct']}
 
-🔥 <b>Streaks:</b>
-• Current Streak: {progress['current_streak']}
-• Best Streak: {progress['best_streak']}
-• Next Bonus: {10 - progress['current_streak']} correct answers
+def broadcast_to_all_users(message):
+    """Broadcast a message to all registered users."""
+    try:
+        sheet_manager = get_sheet_manager()
+        all_records = sheet_manager.main_sheet.get_all_records()
+        
+        for record in all_records:
+            user_id = record.get('UserID')
+            if user_id:
+                try:
+                    bot.send_message(int(user_id), message)
+                    time.sleep(0.1)  # Avoid rate limiting
+                except Exception as e:
+                    logger.error(f"Failed to send message to {user_id}: {e}")
+    except Exception as e:
+        logger.error(f"Error broadcasting message: {e}")
 
-🎮 <b>Game Stats:</b>
-• Questions Skipped: {progress['skips_used']}
-• Games Paused: {progress['games_paused']}
 
-🏆 <b>Streak Bonus:</b>
-Get 10 correct answers in a row to earn 3 bonus tokens!
-"""
+def conduct_daily_lottery():
+    """Conduct daily lottery and announce winner."""
+    try:
+        sheet_manager = get_sheet_manager()
+        all_records = sheet_manager.main_sheet.get_all_records()
+        
+        if not all_records:
+            return
+        
+        # Select random winner
+        winner = random.choice(all_records)
+        winner_id = winner.get('UserID')
+        winner_name = winner.get('Name', 'Player')
+        
+        # Add 5 bonus tokens to winner
+        current_tokens = int(winner.get('Tokens', 0))
+        current_points = int(winner.get('Points', 0))
+        update_user_tokens_points(int(winner_id), current_tokens + 5, current_points)
+        
+        # Announce to all users
+        announcement = f"""
+🏆 <b>DAILY WINNER ANNOUNCEMENT!</b>
+
+🎉 Congratulations to our daily winner!
+👤 Winner: {winner_name} (ID: {winner_id})
+🎁 Prize: 5 bonus tokens!
+
+🔥 <b>Keep playing to be tomorrow's winner!</b>
+💪 Every question you answer increases your chances!
+
+🎮 Ready to play? Use the menu below!
+        """
+        
+        broadcast_to_all_users(announcement)
+        logger.info(f"Daily winner: {winner_id} ({winner_name})")
+        
+    except Exception as e:
+        logger.error(f"Error conducting daily lottery: {e}")
+
+
+def conduct_weekly_raffle():
+    """Conduct weekly raffle with bigger prizes."""
+    try:
+        sheet_manager = get_sheet_manager()
+        all_records = sheet_manager.main_sheet.get_all_records()
+        
+        if not all_records:
+            return
+        
+        # Select random winner
+        winner = random.choice(all_records)
+        winner_id = winner.get('UserID')
+        winner_name = winner.get('Name', 'Player')
+        
+        # Add bigger prize (20 tokens + 500 points)
+        current_tokens = int(winner.get('Tokens', 0))
+        current_points = int(winner.get('Points', 0))
+        update_user_tokens_points(int(winner_id), current_tokens + 20, current_points + 500)
+        
+        # Announce to all users
+        announcement = f"""
+🎊 <b>WEEKLY RAFFLE WINNER!</b>
+
+🏆 Congratulations to our weekly raffle winner!
+👤 Winner: {winner_name} (ID: {winner_id})
+🎁 Grand Prize: 20 tokens + 500 points!
+
+🌟 <b>Weekly raffles every Sunday!</b>
+📈 Keep playing to increase your chances!
+
+🎮 Join the action now!
+        """
+        
+        broadcast_to_all_users(announcement)
+        logger.info(f"Weekly winner: {winner_id} ({winner_name})")
+        
+    except Exception as e:
+        logger.error(f"Error conducting weekly raffle: {e}")
 
 
 @bot.message_handler(commands=['start'])
@@ -281,6 +405,7 @@ def start_handler(message):
     """Handle the /start command."""
     chat_id = message.chat.id
     user = message.from_user
+    all_users.add(chat_id)
 
     # Parse referral code if present
     referrer_id = None
@@ -300,7 +425,6 @@ def start_handler(message):
 
     # Process referral rewards (2 tokens instead of 1)
     if success and referrer_id:
-        # Get referrer data and add 2 tokens
         referrer_data = get_user_data(referrer_id)
         if referrer_data:
             new_tokens = referrer_data['Tokens'] + 2
@@ -319,6 +443,7 @@ def start_handler(message):
 
     welcome_msg = WELCOME_MESSAGE.format(
         name=user.first_name,
+        about_us=ABOUT_US,
         motivation=motivation
     )
 
@@ -352,8 +477,21 @@ def play_handler(message):
         bot.send_message(chat_id, "You have a paused game. What would you like to do?", reply_markup=markup)
         return
 
+    # If there's an active question, continue with it instead of blocking
     if chat_id in current_question:
-        bot.send_message(chat_id, "You already have an active question. Please answer it first or use the pause button.")
+        question_data = current_question[chat_id]
+        answer_markup = InlineKeyboardMarkup()
+        for choice in question_data['choices']:
+            answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
+        
+        control_buttons = [InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")]
+        answer_markup.add(control_buttons[0])
+        
+        bot.send_message(
+            chat_id,
+            f"🧠 <b>Continue your current question:</b>\n{question_data['question']}",
+            reply_markup=answer_markup
+        )
         return
 
     start_new_quiz(chat_id)
@@ -367,8 +505,8 @@ def start_new_quiz(chat_id):
     new_tokens = user['Tokens'] - 1
     update_user_tokens_points(chat_id, new_tokens, user['Points'])
 
-    # Select random quiz
-    quiz = random.choice(quizzes)
+    # Select random quiz using improved randomization
+    quiz = get_random_quiz(chat_id)
     current_question[chat_id] = {
         'correct': quiz['a'],
         'question': quiz['q'],
@@ -379,7 +517,7 @@ def start_new_quiz(chat_id):
     # Initialize progress if needed
     init_player_progress(chat_id)
 
-    # Check if user can skip (once per question)
+    # Check if user can skip
     can_skip = not skipped_questions.get(chat_id, {}).get(quiz['q'], False)
 
     # Create answer buttons
@@ -387,7 +525,7 @@ def start_new_quiz(chat_id):
     for choice in quiz['choices']:
         answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
     
-    # Add control buttons if applicable
+    # Add control buttons
     control_buttons = []
     if can_skip:
         control_buttons.append(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"))
@@ -425,7 +563,6 @@ def buytokens_handler(message):
         price_text = f"{label} (₵{data['price_cedis']} / ${data['price_usd']})"
         markup.add(InlineKeyboardButton(price_text, callback_data=f"buy:{label}"))
 
-    # Add custom token option (no limit)
     markup.add(InlineKeyboardButton("🎯 Custom Amount (No Limit)", callback_data="buy:custom"))
 
     bot.send_message(
@@ -448,6 +585,7 @@ def redeem_handler(message):
     points = user['Points']
     markup = InlineKeyboardMarkup()
 
+    # Show rewards based on point requirements
     for label, reward in REDEEM_OPTIONS.items():
         if points >= reward['points']:
             price_text = f"{label} ({reward['points']} pts) - ₵{reward['cedis']} / ${reward['usd']}"
@@ -459,11 +597,143 @@ def redeem_handler(message):
     if markup.keyboard:
         bot.send_message(
             chat_id, 
-            f"🏆 <b>Available Rewards:</b>\n\nYour Points: {points}\n💱 Exchange Rate: $1 = ₵{USD_TO_CEDIS_RATE}\n\nChoose a reward to redeem:", 
+            f"🏆 <b>Available Rewards:</b>\n\nYour Points: {points}\n💱 Exchange Rate: $1 = ₵{USD_TO_CEDIS_RATE}\n\n🎁 <b>NEW:</b> 1 token = 20 points\n💯 Points above 100 unlock premium rewards!\n\nChoose a reward to redeem:", 
             reply_markup=markup
         )
     else:
-        bot.send_message(chat_id, "⚠️ You don't have enough points to redeem any rewards yet.")
+        bot.send_message(chat_id, f"⚠️ You need more points to redeem rewards.\n\n💰 Your Points: {points}\n🎯 Minimum: 20 points for 1 token\n💎 Premium rewards: 100+ points")
+
+
+@bot.message_handler(func=lambda message: message.text == "🏆 Leaderboard")
+def leaderboard_handler(message):
+    """Handle the leaderboard request."""
+    chat_id = message.chat.id
+    
+    leaderboard = get_leaderboard()
+    
+    if not leaderboard:
+        bot.send_message(chat_id, "🏆 <b>Leaderboard</b>\n\nNo data available yet. Start playing to see rankings!")
+        return
+    
+    leaderboard_text = "🏆 <b>Top 10 Players</b>\n\n"
+    
+    for i, player in enumerate(leaderboard, 1):
+        name = player.get('Name', 'Unknown')
+        points = player.get('Points', 0)
+        tokens = player.get('Tokens', 0)
+        
+        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+        leaderboard_text += f"{medal} <b>{name}</b>\n   💎 {points} points | 🪙 {tokens} tokens\n\n"
+    
+    leaderboard_text += "🎮 Keep playing to climb the ranks!"
+    
+    bot.send_message(chat_id, leaderboard_text)
+
+
+@bot.message_handler(func=lambda message: message.text.isdigit() and message.chat.id in custom_token_requests)
+def custom_token_handler(message):
+    """Handle custom token amount input."""
+    chat_id = message.chat.id
+    amount = int(message.text)
+    
+    if amount < 1:
+        bot.send_message(chat_id, "❌ Please enter a valid number of tokens (minimum 1).")
+        return
+    
+    price_cedis = round(amount * 0.4, 2)
+    price_usd = round(price_cedis / USD_TO_CEDIS_RATE, 2)
+    
+    custom_token_requests[chat_id] = {
+        'amount': amount,
+        'price_cedis': price_cedis,
+        'price_usd': price_usd
+    }
+    
+    payment_markup = InlineKeyboardMarkup()
+    payment_markup.add(
+        InlineKeyboardButton("📱 Pay via MTN MoMo", callback_data="pay_momo"),
+        InlineKeyboardButton("₿ Pay via USDT", callback_data="pay_crypto")
+    )
+    
+    bot.send_message(
+        chat_id,
+        f"💰 <b>Custom Order:</b> {amount} tokens\n"
+        f"💸 Price: ₵{price_cedis} / ${price_usd}\n\n"
+        f"{PAYMENT_INFO}\n"
+        "Choose your payment method and send proof to admin:",
+        reply_markup=payment_markup
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("buy:"))
+def buy_callback_handler(call):
+    """Handle token purchase callbacks."""
+    chat_id = call.message.chat.id
+    package_label = call.data.split("buy:")[1]
+
+    bot.answer_callback_query(call.id)
+
+    if package_label == "custom":
+        custom_token_requests[chat_id] = {'waiting_for_amount': True}
+        bot.send_message(
+            chat_id,
+            "🎯 <b>Custom Token Purchase</b>\n\n"
+            "Please enter the number of tokens you want (no limit):\n\n"
+            f"💡 <i>Rate: ₵0.40 per token (${round(0.4/USD_TO_CEDIS_RATE, 3)} USD)</i>"
+        )
+        return
+
+    package_info = TOKEN_PRICING[package_label]
+    
+    # Store pending purchase for verification
+    pending_token_purchases[chat_id] = {
+        'package': package_label,
+        'amount': package_info['amount'],
+        'price_cedis': package_info['price_cedis'],
+        'price_usd': package_info['price_usd']
+    }
+    
+    payment_markup = InlineKeyboardMarkup()
+    payment_markup.add(
+        InlineKeyboardButton("📱 Pay via MTN MoMo", callback_data=f"pay_momo:{package_label}"),
+        InlineKeyboardButton("₿ Pay via USDT", callback_data=f"pay_crypto:{package_label}")
+    )
+
+    bot.send_message(
+        chat_id,
+        f"💰 <b>Selected:</b> {package_label}\n"
+        f"💸 Price: ₵{package_info['price_cedis']} / ${package_info['price_usd']}\n\n"
+        f"{PAYMENT_INFO}\n"
+        "⚠️ <b>Important:</b> Tokens will be added after payment verification by admin.\n\n"
+        "Choose your payment method:",
+        reply_markup=payment_markup
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("pay_"))
+def payment_method_handler(call):
+    """Handle payment method selection."""
+    chat_id = call.message.chat.id
+    bot.answer_callback_query(call.id)
+    
+    if "momo" in call.data:
+        bot.send_message(
+            chat_id,
+            f"📱 <b>MTN MoMo Payment</b>\n\n"
+            f"• Send to merchant: <b>474994</b>\n"
+            f"• Name: <b>Sufex Technology</b>\n"
+            f"• Direct Payment: <a href='{PAYSTACK_LINK}'>Pay with Paystack</a>\n\n"
+            f"📸 Send payment screenshot to @Learn4CashAdmin\n"
+            f"⏳ Tokens will be added after verification!"
+        )
+    elif "crypto" in call.data:
+        bot.send_message(
+            chat_id,
+            "₿ <b>USDT Payment (TRC20)</b>\n\n"
+            "• Address: <code>TVd2gJT5Q1ncXqdPmsCFYaiizvgaWbLSGn</code>\n\n"
+            "📸 Send transaction screenshot to @Learn4CashAdmin\n"
+            "⏳ Tokens will be added after verification!"
+        )
 
 
 @bot.message_handler(func=lambda message: message.text == "📊 My Stats")
@@ -476,7 +746,6 @@ def stats_handler(message):
         bot.send_message(chat_id, "Please /start first.")
         return
 
-    # Initialize progress if needed
     init_player_progress(chat_id)
     progress = player_progress[chat_id]
     
@@ -487,7 +756,7 @@ def stats_handler(message):
 
 👤 Name: {user['Name']}
 🔐 Tokens: {user['Tokens']}
-🧠 Points: {user['Points']}
+🧠 Points: {user['Points']} (1 token = 20 points)
 👥 Referrals: {int(user['ReferralEarnings'])}
 
 🎯 <b>Performance:</b>
@@ -495,7 +764,7 @@ def stats_handler(message):
 • Current Streak: {progress['current_streak']}
 • Best Streak: {progress['best_streak']}
 
-💰 MoMo: {user['MoMoNumber'] or 'Not needed for payments'}
+💰 MoMo: Not needed for payments
     """
 
     bot.send_message(chat_id, stats_msg)
@@ -511,7 +780,33 @@ def progress_handler(message):
         bot.send_message(chat_id, "Please /start first.")
         return
 
-    bot.send_message(chat_id, get_progress_message(chat_id))
+    init_player_progress(chat_id)
+    progress = player_progress[chat_id]
+    
+    accuracy = (progress['total_correct'] / progress['total_questions'] * 100) if progress['total_questions'] > 0 else 0
+
+    progress_msg = f"""
+📈 <b>Your Progress Report</b>
+
+🎯 <b>Performance:</b>
+• Accuracy: {accuracy:.1f}%
+• Total Questions: {progress['total_questions']}
+• Correct Answers: {progress['total_correct']}
+
+🔥 <b>Streaks:</b>
+• Current Streak: {progress['current_streak']}
+• Best Streak: {progress['best_streak']}
+• Next Bonus: {10 - progress['current_streak']} correct answers
+
+🎮 <b>Game Stats:</b>
+• Questions Skipped: {progress['skips_used']}
+• Games Paused: {progress['games_paused']}
+
+🏆 <b>Streak Bonus:</b>
+Get 10 correct answers in a row to earn 3 bonus tokens!
+    """
+
+    bot.send_message(chat_id, progress_msg)
 
 
 @bot.message_handler(func=lambda message: message.text == "👥 Referrals")
@@ -556,7 +851,6 @@ def daily_reward_handler(message):
         bot.send_message(chat_id, "Please /start first.")
         return
 
-    # Check for daily reward
     daily_reward_given = check_and_give_daily_reward(chat_id)
     motivation = random.choice(MOTIVATIONAL_MESSAGES)
 
@@ -601,16 +895,16 @@ def help_handler(message):
 • Choose from packages or custom amount
 • No limit on custom purchases
 • Pay via MTN MoMo or USDT crypto
-• Automatic processing after payment
+• Manual verification by admin required
 
 🎁 <b>Daily Rewards:</b>
 • Get 1 free token every day
 • Just visit the bot daily to claim
 
 🎁 <b>Redeeming:</b>
-• Exchange points for rewards
+• Exchange points for rewards (1 token = 20 points)
+• Tokens, airtime, data, MoMo, phones, laptops
 • See values in both Cedis and USD
-• Get tokens, airtime, data, MoMo, or crypto
 
 👥 <b>Referrals:</b>
 • Earn 2 tokens per referral (auto-processed)
@@ -633,151 +927,6 @@ Need help? Contact @Learn4CashAdmin
     bot.send_message(message.chat.id, help_msg)
 
 
-@bot.message_handler(func=lambda message: message.text == "🏆 Leaderboard")
-def leaderboard_handler(message):
-    """Handle the leaderboard request."""
-    chat_id = message.chat.id
-    # This would be implemented with actual user data from sheets
-    bot.send_message(chat_id, "🏆 <b>Leaderboard coming soon!</b>\n\nWe're working on displaying top players based on points and streaks.")
-
-
-@bot.message_handler(func=lambda message: message.text.isdigit() and message.chat.id in custom_token_requests)
-def custom_token_handler(message):
-    """Handle custom token amount input."""
-    chat_id = message.chat.id
-    amount = int(message.text)
-    
-    if amount < 1:
-        bot.send_message(chat_id, "❌ Please enter a valid number of tokens (minimum 1).")
-        return
-    
-    # Calculate price (₵0.4 per token)
-    price_cedis = round(amount * 0.4, 2)
-    price_usd = round(price_cedis / USD_TO_CEDIS_RATE, 2)
-    
-    custom_token_requests[chat_id] = {
-        'amount': amount,
-        'price_cedis': price_cedis,
-        'price_usd': price_usd
-    }
-    
-    # Show payment options directly
-    payment_markup = InlineKeyboardMarkup()
-    payment_markup.add(
-        InlineKeyboardButton("📱 Pay via MTN MoMo", callback_data="pay_momo"),
-        InlineKeyboardButton("₿ Pay via USDT", callback_data="pay_crypto")
-    )
-    payment_markup.add(InlineKeyboardButton("✅ Payment Completed", callback_data="payment_completed"))
-    
-    bot.send_message(
-        chat_id,
-        f"💰 <b>Custom Order:</b> {amount} tokens\n"
-        f"💸 Price: ₵{price_cedis} / ${price_usd}\n\n"
-        f"{PAYMENT_INFO}\n"
-        "Choose your payment method:",
-        reply_markup=payment_markup
-    )
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("buy:"))
-def buy_callback_handler(call):
-    """Handle token purchase callbacks."""
-    chat_id = call.message.chat.id
-    package_label = call.data.split("buy:")[1]
-
-    bot.answer_callback_query(call.id)
-
-    if package_label == "custom":
-        custom_token_requests[chat_id] = {'waiting_for_amount': True}
-        bot.send_message(
-            chat_id,
-            "🎯 <b>Custom Token Purchase</b>\n\n"
-            "Please enter the number of tokens you want (no limit):\n\n"
-            f"💡 <i>Rate: ₵0.40 per token (${round(0.4/USD_TO_CEDIS_RATE, 3)} USD)</i>"
-        )
-        return
-
-    package_info = TOKEN_PRICING[package_label]
-    
-    # Show payment options directly
-    payment_markup = InlineKeyboardMarkup()
-    payment_markup.add(
-        InlineKeyboardButton("📱 Pay via MTN MoMo", callback_data=f"pay_momo:{package_label}"),
-        InlineKeyboardButton("₿ Pay via USDT", callback_data=f"pay_crypto:{package_label}")
-    )
-    payment_markup.add(InlineKeyboardButton("✅ Payment Completed", callback_data=f"payment_completed:{package_label}"))
-
-    bot.send_message(
-        chat_id,
-        f"💰 <b>Selected:</b> {package_label}\n"
-        f"💸 Price: ₵{package_info['price_cedis']} / ${package_info['price_usd']}\n\n"
-        f"{PAYMENT_INFO}\n"
-        "Choose your payment method:",
-        reply_markup=payment_markup
-    )
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("pay_"))
-def payment_method_handler(call):
-    """Handle payment method selection."""
-    chat_id = call.message.chat.id
-    bot.answer_callback_query(call.id)
-    
-    if "momo" in call.data:
-        bot.send_message(
-            chat_id,
-            "📱 <b>MTN MoMo Payment</b>\n\n"
-            "• Send to merchant: <b>474994</b>\n"
-            "• Name: <b>Sufex Technology</b>\n\n"
-            "📸 Send payment screenshot to @Learn4CashAdmin\n"
-            "⚡ Tokens will be added after verification!"
-        )
-    elif "crypto" in call.data:
-        bot.send_message(
-            chat_id,
-            "₿ <b>USDT Payment (TRC20)</b>\n\n"
-            "• Address: <code>TVd2gJT5Q1ncXqdPmsCFYaiizvgaWbLSGn</code>\n\n"
-            "📸 Send transaction screenshot to @Learn4CashAdmin\n"
-            "⚡ Tokens will be added after verification!"
-        )
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("payment_completed"))
-def payment_completed_handler(call):
-    """Handle payment completion confirmation."""
-    chat_id = call.message.chat.id
-    bot.answer_callback_query(call.id)
-
-    if ":" in call.data:
-        package_label = call.data.split(":")[1]
-        package_info = TOKEN_PRICING[package_label]
-        amount = package_info['amount']
-    elif chat_id in custom_token_requests:
-        custom_info = custom_token_requests[chat_id]
-        amount = custom_info['amount']
-    else:
-        bot.send_message(chat_id, "❌ Invalid payment request.")
-        return
-
-    # Simulate automatic token addition
-    user = get_user_data(chat_id)
-    if user:
-        new_tokens = user['Tokens'] + amount
-        update_user_tokens_points(chat_id, new_tokens, user['Points'])
-        
-        bot.send_message(
-            chat_id,
-            f"🎉 <b>Payment Confirmed!</b>\n\n"
-            f"✅ <b>+{amount} tokens</b> added to your account!\n"
-            f"💰 Total tokens: <b>{new_tokens}</b>\n\n"
-            f"🎮 Ready to play? Let's go! 🚀"
-        )
-        
-        # Clean up
-        if chat_id in custom_token_requests:
-            del custom_token_requests[chat_id]
-
-
 @bot.callback_query_handler(func=lambda call: call.data == "skip_question")
 def skip_question_handler(call):
     """Handle question skipping."""
@@ -789,18 +938,15 @@ def skip_question_handler(call):
 
     question = current_question[chat_id]['question']
     
-    # Mark question as skipped for this user
     if chat_id not in skipped_questions:
         skipped_questions[chat_id] = {}
     skipped_questions[chat_id][question] = True
 
-    # Update progress
     init_player_progress(chat_id)
     player_progress[chat_id]['skips_used'] += 1
 
     bot.send_message(chat_id, "⏭️ Question skipped! Starting new question...")
     
-    # Clean up and start new question
     del current_question[chat_id]
     time.sleep(1)
     start_new_quiz(chat_id)
@@ -815,11 +961,9 @@ def pause_game_handler(call):
     if chat_id not in current_question:
         return
 
-    # Save current question to paused games
     paused_games[chat_id] = current_question[chat_id]
     del current_question[chat_id]
 
-    # Update progress
     init_player_progress(chat_id)
     player_progress[chat_id]['games_paused'] += 1
 
@@ -840,18 +984,15 @@ def resume_game_handler(call):
         bot.send_message(chat_id, "❌ No paused game found.")
         return
 
-    # Restore paused question
     current_question[chat_id] = paused_games[chat_id]
     del paused_games[chat_id]
 
     question_data = current_question[chat_id]
     
-    # Recreate answer buttons
     answer_markup = InlineKeyboardMarkup()
     for choice in question_data['choices']:
         answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
     
-    # Add control buttons
     control_buttons = [InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")]
     answer_markup.add(control_buttons[0])
 
@@ -868,7 +1009,6 @@ def new_game_handler(call):
     chat_id = call.message.chat.id
     bot.answer_callback_query(call.id)
 
-    # Clear paused game
     if chat_id in paused_games:
         del paused_games[chat_id]
 
@@ -890,7 +1030,6 @@ def answer_handler(call):
     tokens = user['Tokens']
     points = user['Points']
 
-    # Update progress and check for bonus
     bonus_earned = update_player_progress(chat_id, answer == correct)
 
     if answer == correct:
@@ -899,7 +1038,6 @@ def answer_handler(call):
         
         message = "🎉 Correct answer! You earned <b>10 points</b>!"
         
-        # Check for streak bonus
         if bonus_earned:
             tokens += 3
             update_user_tokens_points(chat_id, tokens, points)
@@ -914,14 +1052,11 @@ def answer_handler(call):
         bot.send_message(chat_id, f"❌ Wrong! The correct answer was: <b>{correct}</b>")
         update_user_tokens_points(chat_id, tokens, points)
 
-    # Show updated stats
     progress = player_progress[chat_id]
     bot.send_message(chat_id, f"💰 Balance: {tokens} tokens | {points} points\n🔥 Current Streak: {progress['current_streak']}")
 
-    # Clean up current question
     del current_question[chat_id]
 
-    # Auto-continue if user has tokens
     if tokens > 0:
         time.sleep(2)
         start_new_quiz(chat_id)
@@ -947,7 +1082,6 @@ def redeem_callback_handler(call):
 
     new_points = user['Points'] - reward['points']
 
-    # Handle token redemption
     if "Token" in label:
         token_amount = int(label.split()[0])
         new_tokens = user['Tokens'] + token_amount
@@ -964,7 +1098,6 @@ def redeem_callback_handler(call):
             f"💱 Value: ₵{reward['cedis']} / ${reward['usd']}"
         )
     else:
-        # Handle other rewards
         update_user_tokens_points(chat_id, user['Tokens'], new_points)
         bot.answer_callback_query(call.id, "✅ Redemption submitted!")
         
@@ -979,36 +1112,7 @@ def redeem_callback_handler(call):
             f"📞 Contact @Learn4CashAdmin for updates."
         )
 
-    # Log redemption
     log_point_redemption(chat_id, label, reward['points'], datetime.utcnow().isoformat())
-
-
-def announce_daily_winner():
-    """Announce daily winner to all players."""
-    # This would get all registered users and broadcast
-    winner_id = 123456  # Example winner
-    
-    announcement = f"""
-🏆 <b>DAILY WINNER ANNOUNCEMENT!</b>
-
-🎉 Congratulations to our daily winner!
-👤 Winner ID: {winner_id}
-🎁 Prize: Special reward coming your way!
-
-🔥 <b>Keep playing to be tomorrow's winner!</b>
-💪 Every question you answer increases your chances!
-
-🎮 Play now: /start
-    """
-    
-    # Broadcast to all users (implementation needed)
-    logger.info(f"Daily winner announced: {winner_id}")
-
-
-def weekly_raffle():
-    """Conduct weekly raffle for all players."""
-    # Implementation for weekly raffle
-    logger.info("Weekly raffle conducted")
 
 
 @bot.message_handler(func=lambda message: True)
@@ -1016,7 +1120,6 @@ def default_handler(message):
     """Handle all other messages."""
     chat_id = message.chat.id
 
-    # Check if user is in custom token flow
     if chat_id in custom_token_requests and custom_token_requests[chat_id].get('waiting_for_amount'):
         if message.text.isdigit():
             custom_token_handler(message)
@@ -1035,11 +1138,8 @@ def schedule_events():
     """Schedule daily announcements and weekly raffles."""
     import schedule
     
-    # Schedule daily winner announcement
-    schedule.every().day.at("20:00").do(announce_daily_winner)
-    
-    # Schedule weekly raffle
-    schedule.every().sunday.at("21:00").do(weekly_raffle)
+    schedule.every().day.at("20:00").do(conduct_daily_lottery)
+    schedule.every().sunday.at("21:00").do(conduct_weekly_raffle)
     
     while True:
         schedule.run_pending()
