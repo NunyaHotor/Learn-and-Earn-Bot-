@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 API_KEY = "8470972230:AAFs4wYw94DOiXk2TLpyM0iKlfXLL78JdBE"
 bot = telebot.TeleBot(API_KEY, parse_mode='HTML')
 
-# Enhanced quiz data with 35 African-centered questions
+# Enhanced quiz data with 65 African-centered questions
 quizzes = [
     # Ghana Questions
     {"q": "Who was Ghana's first president?", "a": "Kwame Nkrumah", "choices": ["Kwame Nkrumah", "Rawlings", "Mahama", "Busia"]},
@@ -56,7 +56,7 @@ quizzes = [
     {"q": "Which African country produces the most cocoa?", "a": "Côte d'Ivoire", "choices": ["Ghana", "Nigeria", "Cameroon", "Côte d'Ivoire"]},
     {"q": "What is the currency of Nigeria?", "a": "Naira", "choices": ["Cedi", "Shilling", "Rand", "Naira"]},
     
-    # New African-centered questions
+    # Historical Questions
     {"q": "Who was the Ethiopian emperor who defeated Italy at Adwa in 1896?", "a": "Menelik II", "choices": ["Haile Selassie", "Menelik II", "Tewodros II", "Yohannes IV"]},
     {"q": "Which ancient African kingdom was known for its gold trade?", "a": "Mali Empire", "choices": ["Songhai", "Mali Empire", "Ghana Empire", "Kanem"]},
     {"q": "Who was the first woman to win a Nobel Peace Prize from Africa?", "a": "Wangari Maathai", "choices": ["Ellen Johnson Sirleaf", "Wangari Maathai", "Leymah Gbowee", "Tawakkol Karman"]},
@@ -77,7 +77,51 @@ quizzes = [
     {"q": "Which lake is shared by Kenya, Tanzania, and Uganda?", "a": "Lake Victoria", "choices": ["Lake Tanganyika", "Lake Victoria", "Lake Malawi", "Lake Chad"]},
     {"q": "What does 'Ubuntu' mean in African philosophy?", "a": "I am because we are", "choices": ["Unity in diversity", "I am because we are", "Strength in numbers", "Peace and harmony"]},
     {"q": "Which African country was the first to gain independence?", "a": "Libya", "choices": ["Ghana", "Nigeria", "Libya", "Morocco"]},
-    {"q": "Who was the founder of the Kingdom of Zulu?", "a": "Shaka Zulu", "choices": ["Shaka Zulu", "Cetshwayo", "Dingane", "Mpande"]}
+    {"q": "Who was the founder of the Kingdom of Zulu?", "a": "Shaka Zulu", "choices": ["Shaka Zulu", "Cetshwayo", "Dingane", "Mpande"]},
+    
+    # NEW 30 AFRICAN-CENTERED QUESTIONS
+    
+    # Geography Questions
+    {"q": "Which African country is landlocked and bordered by 7 countries?", "a": "Chad", "choices": ["Mali", "Niger", "Chad", "Burkina Faso"]},
+    {"q": "What is the largest lake in Africa?", "a": "Lake Victoria", "choices": ["Lake Tanganyika", "Lake Victoria", "Lake Malawi", "Lake Chad"]},
+    {"q": "Which African country has both Atlantic and Indian Ocean coastlines?", "a": "South Africa", "choices": ["Somalia", "South Africa", "Morocco", "Egypt"]},
+    {"q": "What is the lowest point in Africa?", "a": "Lake Assal", "choices": ["Dead Sea", "Lake Assal", "Qattara Depression", "Danakil Depression"]},
+    {"q": "Which African mountain range is located in Morocco?", "a": "Atlas Mountains", "choices": ["Atlas Mountains", "Drakensberg", "Ethiopian Highlands", "Ahaggar Mountains"]},
+    
+    # Currency Questions
+    {"q": "What is the currency of Kenya?", "a": "Shilling", "choices": ["Rand", "Shilling", "Birr", "Dinar"]},
+    {"q": "Which African country uses the Franc CFA?", "a": "Senegal", "choices": ["Ghana", "Nigeria", "Senegal", "Ethiopia"]},
+    {"q": "What is the currency of Egypt?", "a": "Pound", "choices": ["Dinar", "Dirham", "Pound", "Birr"]},
+    {"q": "Which currency is used in Morocco?", "a": "Dirham", "choices": ["Dinar", "Dirham", "Franc", "Pound"]},
+    {"q": "What is the currency of Ethiopia?", "a": "Birr", "choices": ["Birr", "Shilling", "Rand", "Naira"]},
+    
+    # Commerce & Economics
+    {"q": "Which African country is the largest producer of diamonds?", "a": "Botswana", "choices": ["South Africa", "Botswana", "Angola", "Congo"]},
+    {"q": "What is Africa's largest stock exchange?", "a": "Johannesburg Stock Exchange", "choices": ["Nigerian Stock Exchange", "Johannesburg Stock Exchange", "Egyptian Exchange", "Nairobi Securities Exchange"]},
+    {"q": "Which African country exports the most oil?", "a": "Nigeria", "choices": ["Angola", "Nigeria", "Algeria", "Libya"]},
+    {"q": "What is the main export of Zambia?", "a": "Copper", "choices": ["Gold", "Copper", "Diamonds", "Coffee"]},
+    {"q": "Which African country is the largest producer of coffee?", "a": "Ethiopia", "choices": ["Kenya", "Ethiopia", "Uganda", "Tanzania"]},
+    
+    # Politics & Government
+    {"q": "Who was the first black president of South Africa?", "a": "Nelson Mandela", "choices": ["Nelson Mandela", "Thabo Mbeki", "Jacob Zuma", "Desmond Tutu"]},
+    {"q": "Which African organization promotes continental unity?", "a": "African Union", "choices": ["ECOWAS", "African Union", "SADC", "EAC"]},
+    {"q": "Who was Libya's leader for 42 years?", "a": "Muammar Gaddafi", "choices": ["Hosni Mubarak", "Muammar Gaddafi", "Idi Amin", "Robert Mugabe"]},
+    {"q": "Which African country had apartheid?", "a": "South Africa", "choices": ["Zimbabwe", "South Africa", "Namibia", "Angola"]},
+    {"q": "Who founded the African National Congress (ANC)?", "a": "John Dube", "choices": ["Nelson Mandela", "Oliver Tambo", "John Dube", "Walter Sisulu"]},
+    
+    # Religion & Culture
+    {"q": "What is the predominant religion in Ethiopia?", "a": "Christianity", "choices": ["Islam", "Christianity", "Judaism", "Traditional"]},
+    {"q": "Which city is considered holy in Ethiopian Christianity?", "a": "Lalibela", "choices": ["Addis Ababa", "Lalibela", "Gondar", "Axum"]},
+    {"q": "What is the main religion in Morocco?", "a": "Islam", "choices": ["Christianity", "Islam", "Judaism", "Traditional"]},
+    {"q": "Which African country has the most Christians?", "a": "Nigeria", "choices": ["Ethiopia", "Nigeria", "Congo", "Kenya"]},
+    {"q": "What is the holy month in Islam called?", "a": "Ramadan", "choices": ["Hajj", "Ramadan", "Eid", "Zakat"]},
+    
+    # Additional History Questions
+    {"q": "Which ancient African civilization built the pyramids at Meroë?", "a": "Kingdom of Kush", "choices": ["Ancient Egypt", "Kingdom of Kush", "Axum", "Nubia"]},
+    {"q": "Who was the famous warrior queen of the Zulu?", "a": "Queen Nandi", "choices": ["Queen Nzinga", "Queen Nandi", "Queen Amina", "Queen Kandake"]},
+    {"q": "Which African country was colonized by Belgium?", "a": "Congo", "choices": ["Rwanda", "Congo", "Burundi", "All of these"]},
+    {"q": "What year did African Union replace OAU?", "a": "2001", "choices": ["1999", "2000", "2001", "2002"]},
+    {"q": "Which African leader wrote 'How Europe Underdeveloped Africa'?", "a": "Walter Rodney", "choices": ["Kwame Nkrumah", "Walter Rodney", "Julius Nyerere", "Frantz Fanon"]}
 ]
 
 # Global state
@@ -111,6 +155,7 @@ MOTIVATIONAL_MESSAGES = [
 
 # Configuration constants
 ADMIN_CHAT_ID = None  # Set admin chat ID for notifications
+ADMIN_CHAT_IDS = []  # Multiple admin chat IDs
 USD_TO_CEDIS_RATE = 15.8
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
 
@@ -227,9 +272,80 @@ def create_main_menu():
         KeyboardButton("📈 Progress"),
         KeyboardButton("👥 Referrals"),
         KeyboardButton("🏆 Leaderboard"),
-        KeyboardButton("ℹ️ Help")
+        KeyboardButton("ℹ️ Help"),
+        KeyboardButton("📢 Notify Admin")
     )
     return markup
+
+
+def create_admin_menu():
+    """Create the admin menu keyboard."""
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        KeyboardButton("📊 Admin Dashboard"),
+        KeyboardButton("🎯 Run Daily Lottery"),
+        KeyboardButton("🎰 Run Weekly Raffle"),
+        KeyboardButton("📋 View Pending Tokens"),
+        KeyboardButton("✅ Approve Token Purchase"),
+        KeyboardButton("📈 User Stats"),
+        KeyboardButton("📢 Broadcast Message"),
+        KeyboardButton("🔙 Back to User Menu")
+    )
+    return markup
+
+
+def is_admin(user_id):
+    """Check if user is an admin."""
+    return user_id in ADMIN_CHAT_IDS
+
+
+def notify_admin_token_purchase(user_id, package_info, payment_method):
+    """Notify admin about token purchase."""
+    try:
+        user_data = get_user_data(user_id)
+        if not user_data:
+            return
+        
+        message = f"""
+🔔 <b>NEW TOKEN PURCHASE NOTIFICATION</b>
+
+👤 <b>User:</b> {user_data['Name']} (ID: {user_id})
+📦 <b>Package:</b> {package_info.get('amount', 'Custom')} tokens
+💰 <b>Price:</b> ₵{package_info.get('price_cedis', 'N/A')} / ${package_info.get('price_usd', 'N/A')}
+💳 <b>Payment Method:</b> {payment_method}
+⏰ <b>Time:</b> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+
+📱 <b>User Contact:</b> @{user_data.get('Username', 'No username')}
+
+⚡ Use Admin Dashboard to approve purchase
+        """
+        
+        for admin_id in ADMIN_CHAT_IDS:
+            try:
+                bot.send_message(admin_id, message)
+            except Exception as e:
+                logger.error(f"Failed to notify admin {admin_id}: {e}")
+                
+    except Exception as e:
+        logger.error(f"Error notifying admin: {e}")
+
+
+def log_token_transaction(user_id, transaction_type, amount, details, payment_method=None):
+    """Enhanced logging for token transactions."""
+    try:
+        timestamp = datetime.utcnow().isoformat()
+        log_entry = f"{timestamp} | {transaction_type} | User: {user_id} | Amount: {amount} | Details: {details}"
+        if payment_method:
+            log_entry += f" | Payment: {payment_method}"
+        
+        logger.info(f"Token Transaction: {log_entry}")
+        
+        # Log to sheet
+        if transaction_type in ["BUY", "REDEEM"]:
+            log_token_purchase(user_id, f"{transaction_type}_{details}", amount)
+            
+    except Exception as e:
+        logger.error(f"Error logging token transaction: {e}")
 
 
 def get_random_quiz(user_id):
@@ -643,11 +759,20 @@ def custom_token_handler(message):
     price_cedis = round(amount * 0.4, 2)
     price_usd = round(price_cedis / USD_TO_CEDIS_RATE, 2)
     
-    custom_token_requests[chat_id] = {
+    # Store in pending purchases
+    pending_token_purchases[chat_id] = {
+        'package': 'Custom',
         'amount': amount,
         'price_cedis': price_cedis,
         'price_usd': price_usd
     }
+    
+    # Clear custom request
+    if chat_id in custom_token_requests:
+        del custom_token_requests[chat_id]
+    
+    # Log custom purchase attempt
+    log_token_transaction(chat_id, "CUSTOM_BUY_ATTEMPT", amount, f"Custom_{amount}_tokens")
     
     payment_markup = InlineKeyboardMarkup()
     payment_markup.add(
@@ -660,7 +785,8 @@ def custom_token_handler(message):
         f"💰 <b>Custom Order:</b> {amount} tokens\n"
         f"💸 Price: ₵{price_cedis} / ${price_usd}\n\n"
         f"{PAYMENT_INFO}\n"
-        "Choose your payment method and send proof to admin:",
+        "⚠️ <b>Important:</b> Tokens will be added after payment verification.\n\n"
+        "Choose your payment method:",
         reply_markup=payment_markup
     )
 
@@ -693,6 +819,9 @@ def buy_callback_handler(call):
         'price_usd': package_info['price_usd']
     }
     
+    # Log purchase attempt
+    log_token_transaction(chat_id, "BUY_ATTEMPT", package_info['amount'], package_label)
+    
     payment_markup = InlineKeyboardMarkup()
     payment_markup.add(
         InlineKeyboardButton("📱 Pay via MTN MoMo", callback_data=f"pay_momo:{package_label}"),
@@ -716,6 +845,17 @@ def payment_method_handler(call):
     chat_id = call.message.chat.id
     bot.answer_callback_query(call.id)
     
+    # Determine payment method
+    payment_method = "MTN MoMo" if "momo" in call.data else "USDT Crypto"
+    
+    # Log payment method selection
+    if chat_id in pending_token_purchases:
+        purchase_info = pending_token_purchases[chat_id]
+        log_token_transaction(chat_id, "PAYMENT_METHOD", purchase_info['amount'], purchase_info['package'], payment_method)
+        
+        # Notify admin
+        notify_admin_token_purchase(chat_id, purchase_info, payment_method)
+    
     if "momo" in call.data:
         bot.send_message(
             chat_id,
@@ -724,6 +864,7 @@ def payment_method_handler(call):
             f"• Name: <b>Sufex Technology</b>\n"
             f"• Direct Payment: <a href='{PAYSTACK_LINK}'>Pay with Paystack</a>\n\n"
             f"📸 Send payment screenshot to @Learn4CashAdmin\n"
+            f"📢 Use '📢 Notify Admin' button to alert admin\n"
             f"⏳ Tokens will be added after verification!"
         )
     elif "crypto" in call.data:
@@ -732,6 +873,7 @@ def payment_method_handler(call):
             "₿ <b>USDT Payment (TRC20)</b>\n\n"
             "• Address: <code>TVd2gJT5Q1ncXqdPmsCFYaiizvgaWbLSGn</code>\n\n"
             "📸 Send transaction screenshot to @Learn4CashAdmin\n"
+            "📢 Use '📢 Notify Admin' button to alert admin\n"
             "⏳ Tokens will be added after verification!"
         )
 
@@ -873,6 +1015,129 @@ def daily_reward_handler(message):
         )
 
 
+@bot.message_handler(func=lambda message: message.text == "📢 Notify Admin")
+def notify_admin_handler(message):
+    """Handle admin notification requests."""
+    chat_id = message.chat.id
+    user = get_user_data(chat_id)
+    
+    if not user:
+        bot.send_message(chat_id, "Please /start first.")
+        return
+    
+    # Check if user has pending token purchase
+    if chat_id in pending_token_purchases:
+        purchase_info = pending_token_purchases[chat_id]
+        notify_admin_token_purchase(chat_id, purchase_info, "User Request")
+        bot.send_message(
+            chat_id,
+            "✅ <b>Admin Notified!</b>\n\n"
+            "Your token purchase notification has been sent to the admin.\n"
+            "You will receive your tokens after payment verification.\n\n"
+            "📬 Make sure you've sent payment proof to @Learn4CashAdmin"
+        )
+    else:
+        bot.send_message(
+            chat_id,
+            "📢 <b>Contact Admin</b>\n\n"
+            "No pending token purchase found.\n"
+            "For general inquiries, contact @Learn4CashAdmin directly."
+        )
+
+
+@bot.message_handler(func=lambda message: message.text == "📊 Admin Dashboard" and is_admin(message.chat.id))
+def admin_dashboard_handler(message):
+    """Handle admin dashboard request."""
+    chat_id = message.chat.id
+    
+    try:
+        sheet_manager = get_sheet_manager()
+        all_users = sheet_manager.get_all_users()
+        
+        total_users = len(all_users)
+        total_tokens = sum(int(user.get('Tokens', 0)) for user in all_users)
+        total_points = sum(int(user.get('Points', 0)) for user in all_users)
+        pending_purchases = len(pending_token_purchases)
+        
+        dashboard_msg = f"""
+📊 <b>ADMIN DASHBOARD</b>
+
+👥 <b>User Statistics:</b>
+• Total Users: {total_users}
+• Total Tokens in System: {total_tokens}
+• Total Points in System: {total_points}
+• Pending Token Purchases: {pending_purchases}
+
+🎯 <b>Quick Actions:</b>
+• Run Daily Lottery
+• Run Weekly Raffle  
+• View Pending Purchases
+• Approve Token Purchases
+• Broadcast Messages
+
+📈 <b>System Status:</b> ✅ Online
+⏰ <b>Last Update:</b> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+        """
+        
+        bot.send_message(chat_id, dashboard_msg, reply_markup=create_admin_menu())
+        
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Dashboard Error: {str(e)}")
+
+
+@bot.message_handler(func=lambda message: message.text == "🎯 Run Daily Lottery" and is_admin(message.chat.id))
+def admin_run_daily_lottery(message):
+    """Admin run daily lottery manually."""
+    chat_id = message.chat.id
+    
+    try:
+        conduct_daily_lottery()
+        bot.send_message(chat_id, "✅ Daily lottery conducted successfully!")
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error conducting lottery: {str(e)}")
+
+
+@bot.message_handler(func=lambda message: message.text == "🎰 Run Weekly Raffle" and is_admin(message.chat.id))
+def admin_run_weekly_raffle(message):
+    """Admin run weekly raffle manually."""
+    chat_id = message.chat.id
+    
+    try:
+        conduct_weekly_raffle()
+        bot.send_message(chat_id, "✅ Weekly raffle conducted successfully!")
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error conducting raffle: {str(e)}")
+
+
+@bot.message_handler(func=lambda message: message.text == "📋 View Pending Tokens" and is_admin(message.chat.id))
+def admin_view_pending_tokens(message):
+    """View pending token purchases."""
+    chat_id = message.chat.id
+    
+    if not pending_token_purchases:
+        bot.send_message(chat_id, "✅ No pending token purchases.")
+        return
+    
+    pending_msg = "📋 <b>PENDING TOKEN PURCHASES</b>\n\n"
+    
+    for user_id, purchase_info in pending_token_purchases.items():
+        user_data = get_user_data(user_id)
+        user_name = user_data['Name'] if user_data else 'Unknown'
+        
+        pending_msg += f"👤 <b>{user_name}</b> (ID: {user_id})\n"
+        pending_msg += f"📦 {purchase_info.get('amount', 'Custom')} tokens\n"
+        pending_msg += f"💰 ₵{purchase_info.get('price_cedis', 'N/A')}\n\n"
+    
+    bot.send_message(chat_id, pending_msg)
+
+
+@bot.message_handler(func=lambda message: message.text == "🔙 Back to User Menu" and is_admin(message.chat.id))
+def admin_back_to_user_menu(message):
+    """Return to user menu from admin menu."""
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "🔙 Returned to user menu", reply_markup=create_main_menu())
+
+
 @bot.message_handler(func=lambda message: message.text == "ℹ️ Help")
 def help_handler(message):
     """Handle the help request."""
@@ -921,10 +1186,20 @@ def help_handler(message):
 • See detailed statistics
 • Track your improvement
 
+📢 <b>Admin Contact:</b>
+• Use "📢 Notify Admin" for token purchase issues
+• Contact @Learn4CashAdmin for other support
+
 Need help? Contact @Learn4CashAdmin
     """
 
-    bot.send_message(message.chat.id, help_msg)
+    # Show admin menu if user is admin
+    if is_admin(message.chat.id):
+        markup = create_admin_menu()
+    else:
+        markup = create_main_menu()
+    
+    bot.send_message(message.chat.id, help_msg, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "skip_question")
@@ -1087,6 +1362,9 @@ def redeem_callback_handler(call):
         new_tokens = user['Tokens'] + token_amount
         update_user_tokens_points(chat_id, new_tokens, new_points)
 
+        # Log token redemption
+        log_token_transaction(chat_id, "REDEEM", token_amount, f"Redeemed_{label}")
+
         bot.answer_callback_query(call.id, f"✅ {token_amount} token(s) added!")
         
         bot.send_message(
@@ -1099,6 +1377,10 @@ def redeem_callback_handler(call):
         )
     else:
         update_user_tokens_points(chat_id, user['Tokens'], new_points)
+        
+        # Log non-token redemption
+        log_token_transaction(chat_id, "REDEEM", 0, f"Redeemed_{label}_for_{reward['points']}_points")
+        
         bot.answer_callback_query(call.id, "✅ Redemption submitted!")
         
         bot.send_message(
@@ -1149,10 +1431,17 @@ def schedule_events():
 if __name__ == "__main__":
     logger.info("Starting Learn4Cash Quiz Bot...")
 
+    # Set admin chat IDs (replace with actual admin user IDs)
+    # Example: ADMIN_CHAT_IDS = [123456789, 987654321]
+    # For now, leave empty - add your admin IDs here
+    ADMIN_CHAT_IDS = []  # Add admin user IDs here
+
     # Start event scheduler in a separate thread
     scheduler_thread = threading.Thread(target=schedule_events)
     scheduler_thread.daemon = True
     scheduler_thread.start()
+
+    logger.info(f"Admin system initialized. Admins: {len(ADMIN_CHAT_IDS)}")
 
     try:
         bot.infinity_polling(timeout=10, long_polling_timeout=5)
