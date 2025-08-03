@@ -909,6 +909,9 @@ def payment_method_handler(call):
         notify_admin_token_purchase(chat_id, purchase_info, payment_method)
     
     if "momo" in call.data:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("📢 NOTIFY ADMIN AFTER PAYMENT", callback_data="notify_admin_payment"))
+        
         bot.send_message(
             chat_id,
             f"📱 <b>MTN MoMo Payment</b>\n\n"
@@ -923,10 +926,14 @@ def payment_method_handler(call):
             f"5. Enter amount and confirm\n"
             f"6. Take screenshot of confirmation\n\n"
             f"📸 Send payment screenshot to @Learn4CashAdmin\n"
-            f"📢 Use '📢 Notify Admin' button to alert admin\n"
-            f"⏳ Tokens will be added after verification!"
+            f"⚠️ <b>IMPORTANT:</b> Click button below after payment!\n"
+            f"⏳ Tokens will be added after verification!",
+            reply_markup=markup
         )
     elif "crypto" in call.data:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("📢 NOTIFY ADMIN AFTER PAYMENT", callback_data="notify_admin_payment"))
+        
         bot.send_message(
             chat_id,
             "₿ <b>USDT Payment (TRC20)</b>\n\n"
@@ -938,8 +945,9 @@ def payment_method_handler(call):
             "4. Send USDT (choose TRC20 network)\n"
             "5. Take screenshot of successful transaction\n\n"
             "📸 Send transaction screenshot to @Learn4CashAdmin\n"
-            "📢 Use '📢 Notify Admin' button to alert admin\n"
-            "⏳ Tokens will be added after verification!"
+            "⚠️ <b>IMPORTANT:</b> Click button below after payment!\n"
+            "⏳ Tokens will be added after verification!",
+            reply_markup=markup
         )
 
 
@@ -1580,8 +1588,8 @@ if __name__ == "__main__":
 
     # Set admin chat IDs (replace with actual admin user IDs)
     # Example: ADMIN_CHAT_IDS = [123456789, 987654321]
-    # For now, leave empty - add your admin IDs here
-    ADMIN_CHAT_IDS = []  # Add admin user IDs here
+    # Add your actual admin user IDs here
+    ADMIN_CHAT_IDS = [123456789]  # Replace with your actual admin user ID(s)
 
     # Start event scheduler in a separate thread
     scheduler_thread = threading.Thread(target=schedule_events)
