@@ -155,7 +155,7 @@ MOTIVATIONAL_MESSAGES = [
 ]
 
 # Configuration constants
-ADMIN_CHAT_ID = None  # Set admin chat ID for notifications
+ADMIN_CHAT_ID = 2145372547  # Set admin chat ID for notifications
 ADMIN_CHAT_IDS = []  # Multiple admin chat IDs
 USD_TO_CEDIS_RATE = 11.8
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
