@@ -156,7 +156,7 @@ MOTIVATIONAL_MESSAGES = [
 # Configuration constants
 ADMIN_CHAT_ID = None  # Set admin chat ID for notifications
 ADMIN_CHAT_IDS = []  # Multiple admin chat IDs
-USD_TO_CEDIS_RATE = 15.8
+USD_TO_CEDIS_RATE = 11.8
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
 
 TOKEN_PRICING = {
@@ -165,34 +165,68 @@ TOKEN_PRICING = {
     "30 tokens": {"amount": 30, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
 }
 
-# Updated reward system: 1 token = 20 points
+# Updated reward system with point-based tiers: 1 token = 20 points
 REDEEM_OPTIONS = {
-    "1 Token": {"points": 20, "reward": "+1 Token", "cedis": 0.4, "usd": round(0.4/USD_TO_CEDIS_RATE, 2)},
-    "3 Tokens": {"points": 60, "reward": "+3 Tokens", "cedis": 1.2, "usd": round(1.2/USD_TO_CEDIS_RATE, 2)},
-    "5 Tokens": {"points": 100, "reward": "+5 Tokens", "cedis": 2.0, "usd": round(2.0/USD_TO_CEDIS_RATE, 2)},
-    "GHS 2 Airtime": {"points": 150, "reward": "GHS 2 Airtime", "cedis": 2, "usd": round(2/USD_TO_CEDIS_RATE, 2)},
-    "GHS 5 Airtime": {"points": 300, "reward": "GHS 5 Airtime", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
-    "GHS 10 Airtime": {"points": 500, "reward": "GHS 10 Airtime", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2)},
-    "500MB Data": {"points": 200, "reward": "500MB Internet Data", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2)},
-    "1GB Data": {"points": 400, "reward": "1GB Internet Data", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
-    "GHS 5 MoMo": {"points": 300, "reward": "GHS 5 MoMo", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2)},
-    "GHS 10 MoMo": {"points": 600, "reward": "GHS 10 MoMo", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2)},
-    "Samsung Phone": {"points": 15000, "reward": "Samsung Galaxy A15", "cedis": 1200, "usd": round(1200/USD_TO_CEDIS_RATE, 2)},
-    "iPhone": {"points": 25000, "reward": "iPhone 13", "cedis": 3500, "usd": round(3500/USD_TO_CEDIS_RATE, 2)},
-    "Budget Laptop": {"points": 20000, "reward": "HP Laptop 14", "cedis": 2800, "usd": round(2800/USD_TO_CEDIS_RATE, 2)},
-    "Gaming Laptop": {"points": 35000, "reward": "Gaming Laptop", "cedis": 5500, "usd": round(5500/USD_TO_CEDIS_RATE, 2)}
+    # Tier 1: 10-150 points - Tokens only
+    "1 Token": {"points": 10, "reward": "+1 Token", "cedis": 0.4, "usd": round(0.4/USD_TO_CEDIS_RATE, 2), "tier": 1},
+    "3 Tokens": {"points": 60, "reward": "+3 Tokens", "cedis": 1.2, "usd": round(1.2/USD_TO_CEDIS_RATE, 2), "tier": 1},
+    "7 Tokens": {"points": 140, "reward": "+7 Tokens", "cedis": 2.8, "usd": round(2.8/USD_TO_CEDIS_RATE, 2), "tier": 1},
+    
+    # Tier 2: 160-1000 points - Tokens, Airtime, Data
+    "GHS 2 Airtime": {"points": 160, "reward": "GHS 2 Airtime", "cedis": 2, "usd": round(2/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    "GHS 5 Airtime": {"points": 300, "reward": "GHS 5 Airtime", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    "500MB Data": {"points": 200, "reward": "500MB Internet Data", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    "1GB Data": {"points": 400, "reward": "1GB Internet Data", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    "2GB Data": {"points": 700, "reward": "2GB Internet Data", "cedis": 8, "usd": round(8/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    "15 Tokens": {"points": 300, "reward": "+15 Tokens", "cedis": 6.0, "usd": round(6.0/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    "25 Tokens": {"points": 500, "reward": "+25 Tokens", "cedis": 10.0, "usd": round(10.0/USD_TO_CEDIS_RATE, 2), "tier": 2},
+    
+    # Tier 3: 1000-10000 points - Tokens, Airtime, Data, MoMo, Basic Phones
+    "GHS 10 Airtime": {"points": 1000, "reward": "GHS 10 Airtime", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "GHS 20 Airtime": {"points": 1800, "reward": "GHS 20 Airtime", "cedis": 20, "usd": round(20/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "5GB Data": {"points": 1200, "reward": "5GB Internet Data", "cedis": 15, "usd": round(15/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "10GB Data": {"points": 2000, "reward": "10GB Internet Data", "cedis": 25, "usd": round(25/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "GHS 10 MoMo": {"points": 1100, "reward": "GHS 10 MoMo", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "GHS 20 MoMo": {"points": 2100, "reward": "GHS 20 MoMo", "cedis": 20, "usd": round(20/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "GHS 50 MoMo": {"points": 5000, "reward": "GHS 50 MoMo", "cedis": 50, "usd": round(50/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "Basic Phone": {"points": 8000, "reward": "Basic Smartphone", "cedis": 400, "usd": round(400/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    "50 Tokens": {"points": 1000, "reward": "+50 Tokens", "cedis": 20.0, "usd": round(20.0/USD_TO_CEDIS_RATE, 2), "tier": 3},
+    
+    # Tier 4: 10000+ points - Premium rewards including laptops
+    "Samsung Phone": {"points": 15000, "reward": "Samsung Galaxy A15", "cedis": 1200, "usd": round(1200/USD_TO_CEDIS_RATE, 2), "tier": 4},
+    "iPhone": {"points": 35000, "reward": "iPhone 13", "cedis": 3500, "usd": round(3500/USD_TO_CEDIS_RATE, 2), "tier": 4},
+    "Budget Laptop": {"points": 25000, "reward": "HP Laptop 14", "cedis": 2800, "usd": round(2800/USD_TO_CEDIS_RATE, 2), "tier": 4},
+    "Gaming Laptop": {"points": 45000, "reward": "Gaming Laptop", "cedis": 5500, "usd": round(5500/USD_TO_CEDIS_RATE, 2), "tier": 4},
+    "GHS 100 MoMo": {"points": 10000, "reward": "GHS 100 MoMo", "cedis": 100, "usd": round(100/USD_TO_CEDIS_RATE, 2), "tier": 4},
+    "GHS 200 MoMo": {"points": 20000, "reward": "GHS 200 MoMo", "cedis": 200, "usd": round(200/USD_TO_CEDIS_RATE, 2), "tier": 4},
+    "100 Tokens": {"points": 2000, "reward": "+100 Tokens", "cedis": 40.0, "usd": round(40.0/USD_TO_CEDIS_RATE, 2), "tier": 4}
 }
 
 PAYMENT_INFO = """
 💸 <b>Payment Instructions</b>
 
-📲 <b>MTN MoMo</b>: 
-• Merchant: <b>474994</b>
+📲 <b>MTN MoMo Payment:</b>
+• Make payment to MTN merchant ID: <b>474994</b>
 • Name: <b>Sufex Technology</b>
 • Direct Payment: <a href="https://paystack.shop/pay/6yjmo6ykwr">Pay with Paystack</a>
 
-💰 <b>Crypto (USDT TRC20)</b>: 
+<b>How to pay MTN MoMo:</b>
+1. Dial *170# on your MTN phone
+2. Select option 1 (Transfer Money)
+3. Select option 3 (To Merchant)
+4. Enter Merchant ID: 474994
+5. Enter amount and confirm
+6. Take screenshot of confirmation
+
+💰 <b>Crypto (USDT TRC20):</b>
 • Address: <code>TVd2gJT5Q1ncXqdPmsCFYaiizvgaWbLSGn</code>
+
+<b>How to get USDT and pay:</b>
+1. Download Trust Wallet or Binance app
+2. Buy USDT using mobile money or bank card
+3. Copy our wallet address above
+4. Send USDT (choose TRC20 network)
+5. Take screenshot of successful transaction
 
 📬 Send payment screenshot to @Learn4CashAdmin for verification.
 ⚡ Tokens are added manually after payment confirmation!
@@ -331,18 +365,19 @@ def notify_admin_token_purchase(user_id, package_info, payment_method):
 
 
 def log_token_transaction(user_id, transaction_type, amount, details, payment_method=None):
-    """Enhanced logging for token transactions."""
+    """Enhanced logging for token transactions with date and time."""
     try:
         timestamp = datetime.utcnow().isoformat()
-        log_entry = f"{timestamp} | {transaction_type} | User: {user_id} | Amount: {amount} | Details: {details}"
+        readable_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        log_entry = f"{readable_time} | {transaction_type} | User: {user_id} | Amount: {amount} | Details: {details}"
         if payment_method:
             log_entry += f" | Payment: {payment_method}"
         
         logger.info(f"Token Transaction: {log_entry}")
         
-        # Log to sheet
-        if transaction_type in ["BUY", "REDEEM"]:
-            log_token_purchase(user_id, f"{transaction_type}_{details}", amount)
+        # Log to sheet with timestamp
+        if transaction_type in ["BUY", "REDEEM", "STREAK_BONUS", "DAILY_REWARD"]:
+            log_token_purchase(user_id, f"{transaction_type}_{details}_{readable_time}", amount, payment_method)
             
     except Exception as e:
         logger.error(f"Error logging token transaction: {e}")
@@ -553,6 +588,10 @@ def start_handler(message):
 
     # Check for daily reward
     daily_reward_given = check_and_give_daily_reward(chat_id)
+    
+    # Log daily reward if given
+    if daily_reward_given:
+        log_token_transaction(chat_id, "DAILY_REWARD", 1, "Daily_login_bonus")
 
     # Send motivational message
     motivation = random.choice(MOTIVATIONAL_MESSAGES)
@@ -690,7 +729,7 @@ def buytokens_handler(message):
 
 @bot.message_handler(func=lambda message: message.text == "🎁 Redeem Rewards")
 def redeem_handler(message):
-    """Handle the redeem rewards request."""
+    """Handle the redeem rewards request with tier-based system."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
 
@@ -701,7 +740,7 @@ def redeem_handler(message):
     points = user['Points']
     markup = InlineKeyboardMarkup()
 
-    # Show rewards based on point requirements
+    # Show rewards based on point requirements and tiers
     for label, reward in REDEEM_OPTIONS.items():
         if points >= reward['points']:
             price_text = f"{label} ({reward['points']} pts) - ₵{reward['cedis']} / ${reward['usd']}"
@@ -711,13 +750,24 @@ def redeem_handler(message):
             ))
 
     if markup.keyboard:
+        # Determine user's tier
+        tier_info = ""
+        if points < 160:
+            tier_info = "🥉 <b>Bronze Tier:</b> Tokens only"
+        elif points < 1000:
+            tier_info = "🥈 <b>Silver Tier:</b> Tokens, Airtime, Data"
+        elif points < 10000:
+            tier_info = "🥇 <b>Gold Tier:</b> Tokens, Airtime, Data, MoMo, Phones"
+        else:
+            tier_info = "💎 <b>Diamond Tier:</b> All rewards including Laptops!"
+
         bot.send_message(
             chat_id, 
-            f"🏆 <b>Available Rewards:</b>\n\nYour Points: {points}\n💱 Exchange Rate: $1 = ₵{USD_TO_CEDIS_RATE}\n\n🎁 <b>NEW:</b> 1 token = 20 points\n💯 Points above 100 unlock premium rewards!\n\nChoose a reward to redeem:", 
+            f"🏆 <b>Available Rewards:</b>\n\n💰 Your Points: {points}\n{tier_info}\n💱 Exchange Rate: $1 = ₵{USD_TO_CEDIS_RATE}\n\n🎯 <b>Tier System:</b>\n• 10-150 pts: Tokens only\n• 160-1000 pts: + Airtime & Data\n• 1000-10000 pts: + MoMo & Phones\n• 10000+ pts: + Laptops!\n\nChoose a reward to redeem:", 
             reply_markup=markup
         )
     else:
-        bot.send_message(chat_id, f"⚠️ You need more points to redeem rewards.\n\n💰 Your Points: {points}\n🎯 Minimum: 20 points for 1 token\n💎 Premium rewards: 100+ points")
+        bot.send_message(chat_id, f"⚠️ You need more points to redeem rewards.\n\n💰 Your Points: {points}\n🎯 Minimum: 10 points for 1 token\n\n🎯 <b>Tier System:</b>\n• 10-150 pts: Tokens only\n• 160-1000 pts: + Airtime & Data\n• 1000-10000 pts: + MoMo & Phones\n• 10000+ pts: + Laptops!")
 
 
 @bot.message_handler(func=lambda message: message.text == "🏆 Leaderboard")
@@ -860,9 +910,16 @@ def payment_method_handler(call):
         bot.send_message(
             chat_id,
             f"📱 <b>MTN MoMo Payment</b>\n\n"
-            f"• Send to merchant: <b>474994</b>\n"
+            f"• Make payment to MTN merchant ID: <b>474994</b>\n"
             f"• Name: <b>Sufex Technology</b>\n"
             f"• Direct Payment: <a href='{PAYSTACK_LINK}'>Pay with Paystack</a>\n\n"
+            f"<b>📋 Step-by-step:</b>\n"
+            f"1. Dial *170# on your MTN phone\n"
+            f"2. Select option 1 (Transfer Money)\n"
+            f"3. Select option 3 (To Merchant)\n"
+            f"4. Enter Merchant ID: 474994\n"
+            f"5. Enter amount and confirm\n"
+            f"6. Take screenshot of confirmation\n\n"
             f"📸 Send payment screenshot to @Learn4CashAdmin\n"
             f"📢 Use '📢 Notify Admin' button to alert admin\n"
             f"⏳ Tokens will be added after verification!"
@@ -872,6 +929,12 @@ def payment_method_handler(call):
             chat_id,
             "₿ <b>USDT Payment (TRC20)</b>\n\n"
             "• Address: <code>TVd2gJT5Q1ncXqdPmsCFYaiizvgaWbLSGn</code>\n\n"
+            "<b>📋 How to get USDT and pay:</b>\n"
+            "1. Download Trust Wallet or Binance app\n"
+            "2. Buy USDT using mobile money or bank card\n"
+            "3. Copy our wallet address above\n"
+            "4. Send USDT (choose TRC20 network)\n"
+            "5. Take screenshot of successful transaction\n\n"
             "📸 Send transaction screenshot to @Learn4CashAdmin\n"
             "📢 Use '📢 Notify Admin' button to alert admin\n"
             "⏳ Tokens will be added after verification!"
@@ -998,6 +1061,7 @@ def daily_reward_handler(message):
 
     if daily_reward_given:
         updated_user = get_user_data(chat_id)
+        log_token_transaction(chat_id, "DAILY_REWARD", 1, "Daily_reward_claimed")
         bot.send_message(
             chat_id,
             f"🎉 <b>Daily Reward Claimed!</b>\n\n"
