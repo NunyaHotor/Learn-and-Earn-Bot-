@@ -720,7 +720,6 @@ def buytokens_handler(message):
         markup.add(InlineKeyboardButton(price_text, callback_data=f"buy:{label}"))
 
     markup.add(InlineKeyboardButton("🎯 Custom Amount (No Limit)", callback_data="buy:custom"))
-    markup.add(InlineKeyboardButton("📢 Notify Admin (After Payment)", callback_data="notify_admin_payment"))
 
     bot.send_message(
         chat_id,
