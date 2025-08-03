@@ -248,7 +248,7 @@ class SheetManager:
             logger.error(f"Unexpected error updating MoMo for {user_id}: {e}")
             return False
 
-    def log_token_purchase(self, user_id: int, label: str, quantity: int) -> bool:
+    def log_token_purchase(self, user_id: int, label: str, quantity: int, payment_method: str = None) -> bool:
         """
         Log a token purchase to the TokenLog sheet.
 
@@ -256,20 +256,24 @@ class SheetManager:
             user_id: Telegram user ID
             label: Purchase label/description
             quantity: Number of tokens purchased
+            payment_method: Payment method used (optional)
 
         Returns:
             True if logging successful, False otherwise
         """
         try:
-            token_sheet = self._get_or_create_worksheet(TOKEN_LOG_SHEET_NAME)
+            token_sheet = self._get_or_create_worksheet(
+                TOKEN_LOG_SHEET_NAME,
+                headers=["UserID", "TransactionType", "Quantity", "Timestamp", "PaymentMethod", "Status"]
+            )
             if not token_sheet:
                 return False
 
             timestamp = datetime.utcnow().isoformat()
-            row = [str(user_id), label, quantity, timestamp]
+            row = [str(user_id), label, quantity, timestamp, payment_method or 'N/A', 'Completed']
             token_sheet.append_row(row)
 
-            logger.info(f"Logged token purchase for user {user_id}: {label} ({quantity} tokens)")
+            logger.info(f"Logged token transaction for user {user_id}: {label} ({quantity} tokens) via {payment_method or 'N/A'}")
             return True
 
         except APIError as e:
@@ -489,6 +493,18 @@ class SheetManager:
             logger.error(f"Unexpected error updating claim date for {user_id}: {e}")
             return False
 
+    def get_all_users(self):
+        """Get all user records for leaderboard and broadcasting."""
+        try:
+            records = self.main_sheet.get_all_records()
+            return records
+        except APIError as e:
+            logger.error(f"API error getting all users: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting all users: {e}")
+            return []
+
     @staticmethod
     def _safe_float(value: Any, default: float = 0.0) -> float:
         """Safely convert value to float."""
@@ -534,9 +550,9 @@ def update_user_momo(user_id: int, momo_number: str) -> bool:
     return get_sheet_manager().update_user_momo(user_id, momo_number)
 
 
-def log_token_purchase(user_id: int, label: str, quantity: int) -> bool:
+def log_token_purchase(user_id: int, label: str, quantity: int, payment_method: str = None) -> bool:
     """Log token purchase (backward compatibility)."""
-    return get_sheet_manager().log_token_purchase(user_id, label, quantity)
+    return get_sheet_manager().log_token_purchase(user_id, label, quantity, payment_method)
 
 
 def increment_referral_count(referrer_id: int) -> bool:
@@ -562,3 +578,8 @@ def check_and_give_daily_reward(user_id: int) -> bool:
 def update_last_claim_date(user_id: int) -> bool:
     """Update last claim date (backward compatibility)."""
     return get_sheet_manager().update_last_claim_date(user_id)
+
+
+def get_all_users():
+    """Get all users (backward compatibility)."""
+    return get_sheet_manager().get_all_users()
