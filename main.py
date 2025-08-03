@@ -133,6 +133,7 @@ paused_games = {}
 pending_token_purchases = {}  # Track pending purchases for verification
 user_question_pools = {}  # Track used questions per user
 all_users = set()  # Track all registered users
+user_feedback_mode = {}  # Track users sending feedback
 
 # Motivational messages
 MOTIVATIONAL_MESSAGES = [
@@ -154,7 +155,7 @@ MOTIVATIONAL_MESSAGES = [
 ]
 
 # Configuration constants
-ADMIN_CHAT_ID = None  # Set admin chat ID for notifications
+ADMIN_CHAT_ID = 2145372547  # Set admin chat ID for notifications
 ADMIN_CHAT_IDS = []  # Multiple admin chat IDs
 USD_TO_CEDIS_RATE = 11.8
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
@@ -307,7 +308,7 @@ def create_main_menu():
         KeyboardButton("👥 Referrals"),
         KeyboardButton("🏆 Leaderboard"),
         KeyboardButton("ℹ️ Help"),
-        KeyboardButton("📢 Notify Admin")
+        KeyboardButton("💬 Send Feedback")
     )
     return markup
 
@@ -722,7 +723,7 @@ def buytokens_handler(message):
 
     bot.send_message(
         chat_id,
-        f"💰 <b>Choose a token package:</b>\n\n{PAYMENT_INFO}\n\n💱 <b>Exchange Rate:</b> $1 = ₵{USD_TO_CEDIS_RATE}",
+        f"💰 <b>Choose a token package:</b>\n\n{PAYMENT_INFO}\n\n💱 <b>Exchange Rate:</b> $1 = ₵{USD_TO_CEDIS_RATE}\n\n⚠️ <b>After Payment:</b> Use 'Notify Admin' button to alert admin for token verification.",
         reply_markup=markup
     )
 
@@ -907,6 +908,9 @@ def payment_method_handler(call):
         notify_admin_token_purchase(chat_id, purchase_info, payment_method)
     
     if "momo" in call.data:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("📢 NOTIFY ADMIN AFTER PAYMENT", callback_data="notify_admin_payment"))
+        
         bot.send_message(
             chat_id,
             f"📱 <b>MTN MoMo Payment</b>\n\n"
@@ -921,10 +925,14 @@ def payment_method_handler(call):
             f"5. Enter amount and confirm\n"
             f"6. Take screenshot of confirmation\n\n"
             f"📸 Send payment screenshot to @Learn4CashAdmin\n"
-            f"📢 Use '📢 Notify Admin' button to alert admin\n"
-            f"⏳ Tokens will be added after verification!"
+            f"⚠️ <b>IMPORTANT:</b> Click button below after payment!\n"
+            f"⏳ Tokens will be added after verification!",
+            reply_markup=markup
         )
     elif "crypto" in call.data:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("📢 NOTIFY ADMIN AFTER PAYMENT", callback_data="notify_admin_payment"))
+        
         bot.send_message(
             chat_id,
             "₿ <b>USDT Payment (TRC20)</b>\n\n"
@@ -936,8 +944,9 @@ def payment_method_handler(call):
             "4. Send USDT (choose TRC20 network)\n"
             "5. Take screenshot of successful transaction\n\n"
             "📸 Send transaction screenshot to @Learn4CashAdmin\n"
-            "📢 Use '📢 Notify Admin' button to alert admin\n"
-            "⏳ Tokens will be added after verification!"
+            "⚠️ <b>IMPORTANT:</b> Click button below after payment!\n"
+            "⏳ Tokens will be added after verification!",
+            reply_markup=markup
         )
 
 
@@ -1079,9 +1088,9 @@ def daily_reward_handler(message):
         )
 
 
-@bot.message_handler(func=lambda message: message.text == "📢 Notify Admin")
-def notify_admin_handler(message):
-    """Handle admin notification requests."""
+@bot.message_handler(func=lambda message: message.text == "💬 Send Feedback")
+def feedback_handler(message):
+    """Handle user feedback and suggestions."""
     chat_id = message.chat.id
     user = get_user_data(chat_id)
     
@@ -1089,24 +1098,20 @@ def notify_admin_handler(message):
         bot.send_message(chat_id, "Please /start first.")
         return
     
-    # Check if user has pending token purchase
-    if chat_id in pending_token_purchases:
-        purchase_info = pending_token_purchases[chat_id]
-        notify_admin_token_purchase(chat_id, purchase_info, "User Request")
-        bot.send_message(
-            chat_id,
-            "✅ <b>Admin Notified!</b>\n\n"
-            "Your token purchase notification has been sent to the admin.\n"
-            "You will receive your tokens after payment verification.\n\n"
-            "📬 Make sure you've sent payment proof to @Learn4CashAdmin"
-        )
-    else:
-        bot.send_message(
-            chat_id,
-            "📢 <b>Contact Admin</b>\n\n"
-            "No pending token purchase found.\n"
-            "For general inquiries, contact @Learn4CashAdmin directly."
-        )
+    user_feedback_mode[chat_id] = True
+    
+    bot.send_message(
+        chat_id,
+        "💬 <b>Send Your Feedback</b>\n\n"
+        "📝 Please type your concerns, suggestions, or feedback.\n"
+        "Your message will be sent directly to the admin.\n\n"
+        "💡 <b>Examples:</b>\n"
+        "• Report bugs or issues\n"
+        "• Suggest new features\n"
+        "• Share your experience\n"
+        "• Request help with specific problems\n\n"
+        "Type your message below:"
+    )
 
 
 @bot.message_handler(func=lambda message: message.text == "📊 Admin Dashboard" and is_admin(message.chat.id))
@@ -1195,6 +1200,39 @@ def admin_view_pending_tokens(message):
     bot.send_message(chat_id, pending_msg)
 
 
+def send_feedback_to_admin(user_id, feedback_text):
+    """Send user feedback to all admins."""
+    try:
+        user_data = get_user_data(user_id)
+        if not user_data:
+            return
+        
+        feedback_message = f"""
+💬 <b>USER FEEDBACK RECEIVED</b>
+
+👤 <b>From:</b> {user_data['Name']} (ID: {user_id})
+📱 <b>Username:</b> @{user_data.get('Username', 'No username')}
+⏰ <b>Time:</b> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+
+📝 <b>Message:</b>
+{feedback_text}
+
+📊 <b>User Stats:</b>
+• Tokens: {user_data['Tokens']}
+• Points: {user_data['Points']}
+• Referrals: {int(user_data['ReferralEarnings'])}
+        """
+        
+        for admin_id in ADMIN_CHAT_IDS:
+            try:
+                bot.send_message(admin_id, feedback_message)
+            except Exception as e:
+                logger.error(f"Failed to send feedback to admin {admin_id}: {e}")
+                
+    except Exception as e:
+        logger.error(f"Error sending feedback to admin: {e}")
+
+
 @bot.message_handler(func=lambda message: message.text == "🔙 Back to User Menu" and is_admin(message.chat.id))
 def admin_back_to_user_menu(message):
     """Return to user menu from admin menu."""
@@ -1250,9 +1288,10 @@ def help_handler(message):
 • See detailed statistics
 • Track your improvement
 
-📢 <b>Admin Contact:</b>
-• Use "📢 Notify Admin" for token purchase issues
-• Contact @Learn4CashAdmin for other support
+📢 <b>Contact & Support:</b>
+• Use "💬 Send Feedback" for concerns/suggestions
+• Use "Notify Admin" button in Buy Tokens after payment
+• Contact @Learn4CashAdmin for direct support
 
 Need help? Contact @Learn4CashAdmin
     """
@@ -1352,6 +1391,38 @@ def new_game_handler(call):
         del paused_games[chat_id]
 
     start_new_quiz(chat_id)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "notify_admin_payment")
+def notify_admin_payment_handler(call):
+    """Handle admin notification for token payment."""
+    chat_id = call.message.chat.id
+    user = get_user_data(chat_id)
+    bot.answer_callback_query(call.id)
+    
+    if not user:
+        bot.send_message(chat_id, "Please /start first.")
+        return
+    
+    # Check if user has pending token purchase
+    if chat_id in pending_token_purchases:
+        purchase_info = pending_token_purchases[chat_id]
+        notify_admin_token_purchase(chat_id, purchase_info, "User Payment Notification")
+        bot.send_message(
+            chat_id,
+            "✅ <b>Admin Notified!</b>\n\n"
+            "Your token purchase notification has been sent to the admin.\n"
+            "You will receive your tokens after payment verification.\n\n"
+            "📬 Make sure you've sent payment proof to @Learn4CashAdmin"
+        )
+    else:
+        bot.send_message(
+            chat_id,
+            "📢 <b>No Pending Purchase Found</b>\n\n"
+            "Please first select a token package and make payment.\n"
+            "Then use this button to notify admin for verification.\n\n"
+            "📞 For other issues, contact @Learn4CashAdmin directly."
+        )
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("answer:"))
@@ -1466,11 +1537,30 @@ def default_handler(message):
     """Handle all other messages."""
     chat_id = message.chat.id
 
+    # Handle custom token amount input
     if chat_id in custom_token_requests and custom_token_requests[chat_id].get('waiting_for_amount'):
         if message.text.isdigit():
             custom_token_handler(message)
         else:
             bot.send_message(chat_id, "Please enter a valid number for tokens.")
+        return
+
+    # Handle feedback messages
+    if chat_id in user_feedback_mode:
+        user_data = get_user_data(chat_id)
+        if user_data:
+            send_feedback_to_admin(chat_id, message.text)
+            bot.send_message(
+                chat_id,
+                "✅ <b>Feedback Sent!</b>\n\n"
+                "Thank you for your feedback! Your message has been sent to the admin.\n"
+                "We appreciate your input and will review it carefully.\n\n"
+                "📞 For urgent issues, contact @Learn4CashAdmin directly.",
+                reply_markup=create_main_menu()
+            )
+        
+        # Clear feedback mode
+        del user_feedback_mode[chat_id]
         return
 
     bot.send_message(
@@ -1497,8 +1587,8 @@ if __name__ == "__main__":
 
     # Set admin chat IDs (replace with actual admin user IDs)
     # Example: ADMIN_CHAT_IDS = [123456789, 987654321]
-    # For now, leave empty - add your admin IDs here
-    ADMIN_CHAT_IDS = []  # Add admin user IDs here
+    # Add your actual admin user IDs here
+    ADMIN_CHAT_IDS = [2145372547]  # Your actual admin user ID
 
     # Start event scheduler in a separate thread
     scheduler_thread = threading.Thread(target=schedule_events)
