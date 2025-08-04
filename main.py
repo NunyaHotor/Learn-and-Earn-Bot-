@@ -1,4 +1,3 @@
-
 """
 Learn4Cash Quiz Bot - A Telegram bot for educational quizzes with token system.
 """
