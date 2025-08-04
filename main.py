@@ -1199,6 +1199,122 @@ def admin_view_pending_tokens(message):
     bot.send_message(chat_id, pending_msg)
 
 
+@bot.message_handler(func=lambda message: message.text == "✅ Approve Token Purchase" and is_admin(message.chat.id))
+def admin_approve_tokens(message):
+    """Handle token purchase approval."""
+    chat_id = message.chat.id
+    
+    if not pending_token_purchases:
+        bot.send_message(chat_id, "✅ No pending token purchases to approve.")
+        return
+    
+    # Create approval buttons for each pending purchase
+    markup = InlineKeyboardMarkup()
+    
+    for user_id, purchase_info in pending_token_purchases.items():
+        user_data = get_user_data(user_id)
+        user_name = user_data['Name'] if user_data else 'Unknown'
+        
+        button_text = f"✅ {user_name} - {purchase_info.get('amount', 'Custom')} tokens"
+        markup.add(InlineKeyboardButton(button_text, callback_data=f"approve_tokens:{user_id}"))
+    
+    markup.add(InlineKeyboardButton("❌ Cancel", callback_data="cancel_approval"))
+    
+    bot.send_message(
+        chat_id,
+        "📋 <b>SELECT USER TO APPROVE TOKEN PURCHASE:</b>\n\n"
+        "Click on a user below to approve their token purchase:",
+        reply_markup=markup
+    )
+
+
+@bot.message_handler(func=lambda message: message.text == "📈 User Stats" and is_admin(message.chat.id))
+def admin_user_stats(message):
+    """Display comprehensive user statistics."""
+    chat_id = message.chat.id
+    
+    try:
+        sheet_manager = get_sheet_manager()
+        all_users = sheet_manager.get_all_users()
+        
+        if not all_users:
+            bot.send_message(chat_id, "❌ No user data available.")
+            return
+        
+        # Calculate statistics
+        total_users = len(all_users)
+        total_tokens = sum(int(user.get('Tokens', 0)) for user in all_users)
+        total_points = sum(int(user.get('Points', 0)) for user in all_users)
+        total_referrals = sum(int(user.get('ReferralEarnings', 0)) for user in all_users)
+        
+        # Find top users
+        top_points = sorted(all_users, key=lambda x: int(x.get('Points', 0)), reverse=True)[:5]
+        top_tokens = sorted(all_users, key=lambda x: int(x.get('Tokens', 0)), reverse=True)[:5]
+        top_referrers = sorted(all_users, key=lambda x: int(x.get('ReferralEarnings', 0)), reverse=True)[:5]
+        
+        # Calculate averages
+        avg_tokens = round(total_tokens / total_users, 2) if total_users > 0 else 0
+        avg_points = round(total_points / total_users, 2) if total_users > 0 else 0
+        
+        stats_msg = f"""
+📈 <b>COMPREHENSIVE USER STATISTICS</b>
+
+📊 <b>Overview:</b>
+• Total Users: {total_users}
+• Total Tokens: {total_tokens}
+• Total Points: {total_points}
+• Total Referrals: {total_referrals}
+• Pending Purchases: {len(pending_token_purchases)}
+
+📈 <b>Averages:</b>
+• Avg Tokens per User: {avg_tokens}
+• Avg Points per User: {avg_points}
+
+🏆 <b>Top 5 by Points:</b>
+"""
+        
+        for i, user in enumerate(top_points, 1):
+            stats_msg += f"{i}. {user.get('Name', 'Unknown')} - {user.get('Points', 0)} pts\n"
+        
+        stats_msg += f"\n💰 <b>Top 5 by Tokens:</b>\n"
+        for i, user in enumerate(top_tokens, 1):
+            stats_msg += f"{i}. {user.get('Name', 'Unknown')} - {user.get('Tokens', 0)} tokens\n"
+        
+        stats_msg += f"\n👥 <b>Top 5 Referrers:</b>\n"
+        for i, user in enumerate(top_referrers, 1):
+            referrals = int(user.get('ReferralEarnings', 0))
+            if referrals > 0:
+                stats_msg += f"{i}. {user.get('Name', 'Unknown')} - {referrals} referrals\n"
+        
+        stats_msg += f"\n⏰ <b>Generated:</b> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        
+        bot.send_message(chat_id, stats_msg)
+        
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error generating user stats: {str(e)}")
+
+
+@bot.message_handler(func=lambda message: message.text == "📢 Broadcast Message" and is_admin(message.chat.id))
+def admin_broadcast_message(message):
+    """Handle broadcast message setup."""
+    chat_id = message.chat.id
+    
+    # Set admin in broadcast mode
+    user_feedback_mode[chat_id] = "broadcast_mode"
+    
+    bot.send_message(
+        chat_id,
+        "📢 <b>BROADCAST MESSAGE TO ALL USERS</b>\n\n"
+        "📝 Type the message you want to send to all registered users.\n\n"
+        "💡 <b>Tips:</b>\n"
+        "• Use HTML formatting (<b>bold</b>, <i>italic</i>)\n"
+        "• Keep it concise and engaging\n"
+        "• Consider using emojis for visual appeal\n\n"
+        "⚠️ <b>Warning:</b> This will be sent to ALL users!\n\n"
+        "Type your broadcast message below:"
+    )
+
+
 def send_feedback_to_admin(user_id, feedback_text):
     """Send user feedback to all admins."""
     try:
@@ -1477,6 +1593,149 @@ def answer_handler(call):
         )
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith("approve_tokens:"))
+def approve_tokens_callback_handler(call):
+    """Handle token approval callbacks."""
+    chat_id = call.message.chat.id
+    
+    if not is_admin(chat_id):
+        bot.answer_callback_query(call.id, "❌ Access denied!")
+        return
+    
+    if call.data == "cancel_approval":
+        bot.answer_callback_query(call.id, "❌ Approval cancelled")
+        bot.send_message(chat_id, "❌ Token approval cancelled.", reply_markup=create_admin_menu())
+        return
+    
+    try:
+        user_id = int(call.data.split("approve_tokens:")[1])
+        
+        if user_id not in pending_token_purchases:
+            bot.answer_callback_query(call.id, "❌ Purchase not found!")
+            return
+        
+        purchase_info = pending_token_purchases[user_id]
+        user_data = get_user_data(user_id)
+        
+        if not user_data:
+            bot.answer_callback_query(call.id, "❌ User not found!")
+            return
+        
+        # Add tokens to user account
+        new_tokens = user_data['Tokens'] + purchase_info['amount']
+        update_user_tokens_points(user_id, new_tokens, user_data['Points'])
+        
+        # Log the approved purchase
+        log_token_transaction(
+            user_id, 
+            "ADMIN_APPROVED", 
+            purchase_info['amount'], 
+            f"Approved_{purchase_info.get('package', 'Custom')}_purchase"
+        )
+        
+        # Remove from pending
+        del pending_token_purchases[user_id]
+        
+        # Notify user
+        try:
+            bot.send_message(
+                user_id,
+                f"✅ <b>TOKEN PURCHASE APPROVED!</b>\n\n"
+                f"🎉 <b>+{purchase_info['amount']} tokens</b> added to your account!\n"
+                f"💰 Total tokens: <b>{new_tokens}</b>\n"
+                f"💱 Value: ₵{purchase_info.get('price_cedis', 'N/A')}\n\n"
+                f"Thank you for your purchase! 🚀"
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify user {user_id}: {e}")
+        
+        # Confirm to admin
+        bot.answer_callback_query(call.id, "✅ Tokens approved and added!")
+        bot.send_message(
+            chat_id,
+            f"✅ <b>TOKEN PURCHASE APPROVED</b>\n\n"
+            f"👤 User: {user_data['Name']} (ID: {user_id})\n"
+            f"📦 Tokens: +{purchase_info['amount']}\n"
+            f"💰 New Total: {new_tokens} tokens\n"
+            f"✅ User has been notified",
+            reply_markup=create_admin_menu()
+        )
+        
+    except Exception as e:
+        bot.answer_callback_query(call.id, "❌ Error approving purchase!")
+        bot.send_message(chat_id, f"❌ Error approving purchase: {str(e)}")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_broadcast:"))
+def confirm_broadcast_callback_handler(call):
+    """Handle broadcast confirmation callbacks."""
+    chat_id = call.message.chat.id
+    
+    if not is_admin(chat_id):
+        bot.answer_callback_query(call.id, "❌ Access denied!")
+        return
+    
+    if call.data == "confirm_broadcast:yes":
+        try:
+            # Get the stored broadcast message
+            broadcast_msg = user_feedback_mode.get(f"{chat_id}_broadcast_msg", "")
+            
+            if not broadcast_msg:
+                bot.answer_callback_query(call.id, "❌ No message found!")
+                return
+            
+            # Add admin signature
+            final_message = f"{broadcast_msg}\n\n📢 <i>Message from Learn4Cash Admin</i>"
+            
+            # Broadcast to all users
+            sheet_manager = get_sheet_manager()
+            all_users = sheet_manager.get_all_users()
+            
+            success_count = 0
+            error_count = 0
+            
+            for user_record in all_users:
+                user_id = user_record.get('UserID')
+                if user_id and int(user_id) != chat_id:  # Don't send to admin
+                    try:
+                        bot.send_message(int(user_id), final_message)
+                        success_count += 1
+                        time.sleep(0.1)  # Avoid rate limiting
+                    except Exception as e:
+                        error_count += 1
+                        logger.error(f"Failed to send broadcast to {user_id}: {e}")
+            
+            # Clean up
+            if f"{chat_id}_broadcast_msg" in user_feedback_mode:
+                del user_feedback_mode[f"{chat_id}_broadcast_msg"]
+            if chat_id in user_feedback_mode:
+                del user_feedback_mode[chat_id]
+            
+            bot.answer_callback_query(call.id, "✅ Broadcast sent!")
+            bot.send_message(
+                chat_id,
+                f"📢 <b>BROADCAST COMPLETED</b>\n\n"
+                f"✅ Successfully sent: {success_count}\n"
+                f"❌ Failed to send: {error_count}\n"
+                f"📊 Total attempts: {success_count + error_count}",
+                reply_markup=create_admin_menu()
+            )
+            
+        except Exception as e:
+            bot.answer_callback_query(call.id, "❌ Broadcast failed!")
+            bot.send_message(chat_id, f"❌ Broadcast error: {str(e)}")
+    
+    elif call.data == "confirm_broadcast:no":
+        # Clean up and cancel
+        if f"{chat_id}_broadcast_msg" in user_feedback_mode:
+            del user_feedback_mode[f"{chat_id}_broadcast_msg"]
+        if chat_id in user_feedback_mode:
+            del user_feedback_mode[chat_id]
+        
+        bot.answer_callback_query(call.id, "❌ Broadcast cancelled")
+        bot.send_message(chat_id, "❌ Broadcast cancelled.", reply_markup=create_admin_menu())
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("redeem:"))
 def redeem_callback_handler(call):
     """Handle redemption callbacks."""
@@ -1544,8 +1803,44 @@ def default_handler(message):
             bot.send_message(chat_id, "Please enter a valid number for tokens.")
         return
 
-    # Handle feedback messages
-    if chat_id in user_feedback_mode:
+    # Handle broadcast message mode (admin only)
+    if chat_id in user_feedback_mode and user_feedback_mode[chat_id] == "broadcast_mode" and is_admin(chat_id):
+        broadcast_message = message.text
+        
+        # Store the message for confirmation
+        user_feedback_mode[f"{chat_id}_broadcast_msg"] = broadcast_message
+        user_feedback_mode[chat_id] = "broadcast_confirm"
+        
+        # Show preview and confirmation
+        markup = InlineKeyboardMarkup()
+        markup.add(
+            InlineKeyboardButton("✅ Send Broadcast", callback_data="confirm_broadcast:yes"),
+            InlineKeyboardButton("❌ Cancel", callback_data="confirm_broadcast:no")
+        )
+        
+        try:
+            sheet_manager = get_sheet_manager()
+            all_users = sheet_manager.get_all_users()
+            user_count = len(all_users)
+        except:
+            user_count = "Unknown"
+        
+        bot.send_message(
+            chat_id,
+            f"📢 <b>BROADCAST PREVIEW</b>\n\n"
+            f"👥 <b>Recipients:</b> {user_count} users\n\n"
+            f"📝 <b>Message Preview:</b>\n"
+            f"{'─' * 30}\n"
+            f"{broadcast_message}\n\n"
+            f"📢 <i>Message from Learn4Cash Admin</i>\n"
+            f"{'─' * 30}\n\n"
+            f"⚠️ <b>Confirm:</b> Send this message to all users?",
+            reply_markup=markup
+        )
+        return
+
+    # Handle regular feedback messages
+    if chat_id in user_feedback_mode and user_feedback_mode[chat_id] == True:
         user_data = get_user_data(chat_id)
         if user_data:
             send_feedback_to_admin(chat_id, message.text)
