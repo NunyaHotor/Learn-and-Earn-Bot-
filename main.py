@@ -1,16 +1,17 @@
 """
 Learn4Cash Quiz Bot - A Telegram bot for educational quizzes with token system.
 """
-
+import os
+import logging
 import random
-import telebot
+import time
+import threading
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from datetime import datetime
-import time
-import logging
-import threading
-import json
-import os
+from dotenv import load_dotenv
 
 from sheet_manager import (
     register_user,
@@ -26,13 +27,19 @@ from sheet_manager import (
     get_sheet_manager
 )
 
+# Load environment variables
+load_dotenv()
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Bot configuration
-API_KEY = "8470972230:AAFs4wYw94DOiXk2TLpyM0iKlfXLL78JdBE"
-bot = telebot.TeleBot(API_KEY, parse_mode='HTML')
+API_KEY = os.getenv("TELEGRAM_API_KEY")
+bot = TeleBot(API_KEY, parse_mode='HTML')
+
+# Set admin chat IDs (replace with actual admin user IDs)
+ADMIN_CHAT_IDS = [2145372547]  # Your actual admin user ID
 
 # Enhanced quiz data with 65 African-centered questions
 quizzes = [
@@ -263,7 +270,7 @@ Hello {name}! Ready to earn while you learn African history and culture?
 • Answer quiz questions to earn points
 • Use tokens to play (1 token per question)
 • Earn 10 points per correct answer
-• Get streak bonuses for consecutive correct answers!
+• Get streak bonuses for 10-question streaks!
 
 🎁 <b>What You Get:</b>
 • 3 FREE tokens to start
@@ -553,7 +560,6 @@ def conduct_weekly_raffle():
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
-    """Handle the /start command."""
     chat_id = message.chat.id
     user = message.from_user
     all_users.add(chat_id)
@@ -563,8 +569,8 @@ def start_handler(message):
     if len(message.text.split()) > 1:
         try:
             referrer_id = int(message.text.split()[1])
-        except ValueError:
-            pass
+        except Exception:
+            referrer_id = None
 
     # Register user
     success = register_user(
@@ -1045,7 +1051,7 @@ def referrals_handler(message):
 💡 <b>How it works:</b>
 • Share your link with friends
 • They click and start the bot
-• You automatically get 2 tokens!
+• You automatically get 2 tokens
 • No limits on referrals!
 
 Share this link with friends to earn rewards! 🚀
@@ -1528,7 +1534,8 @@ def notify_admin_payment_handler(call):
             "✅ <b>Admin Notified!</b>\n\n"
             "Your token purchase notification has been sent to the admin.\n"
             "You will receive your tokens after payment verification.\n\n"
-            "📬 Make sure you've sent payment proof to @Learn4CashAdmin"
+
+                       "📬 Make sure you've sent payment proof to @Learn4CashAdmin."
         )
     else:
         bot.send_message(
