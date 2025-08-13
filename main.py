@@ -159,10 +159,11 @@ Hello {name}! Ready to earn while you learn African history and culture?
 {about_us}
 
 🎮 <b>How to Play:</b>
-• Answer quiz questions to earn points
+• Choose your preferred African zone and language
 • Use tokens to play (1 token per question)
 • Earn 10 points per correct answer
 • Get streak bonuses for 10-question streaks
+• 70% zone-specific questions, 30% general questions
 
 🎁 <b>What You Get:</b>
 • 3 FREE tokens to start
@@ -178,7 +179,8 @@ Hello {name}! Ready to earn while you learn African history and culture?
 
 🎯 <b>Special Features:</b>
 • Skip questions (once per question)
-• Pause and resume games
+• Pause and resume games anytime
+• Return to main menu during games
 • Track your progress
 • Compete on leaderboards
 
@@ -439,8 +441,7 @@ MOTIVATIONAL_MESSAGES = [
 def create_main_menu(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     buttons = [
-        KeyboardButton("🎮 General Quiz"),
-        KeyboardButton("🌍 Zone Quiz"),
+        KeyboardButton("🎮 Start Quiz"),
         KeyboardButton("💰 Buy Tokens"),
         KeyboardButton("🎁 Redeem Rewards"),
         KeyboardButton("🎁 Daily Reward"),
@@ -471,16 +472,20 @@ def create_admin_menu():
     return markup
 
 def send_zone_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    for zone in ZONE_QUIZZES.keys():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    zones = list(ZONE_QUIZZES.keys())
+    for zone in zones:
         markup.add(KeyboardButton(zone))
-    bot.send_message(chat_id, "🌍 Choose an African zone to learn about:", reply_markup=markup)
+    markup.add(KeyboardButton("🌍 General Africa"))
+    bot.send_message(chat_id, "🌍 Choose an African zone to learn about:\n\nEach zone has specific questions about that region's history, culture, and current affairs!", reply_markup=markup)
 
 def send_language_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    for lang in ["English", "French", "Swahili", "Arabic"]:
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    languages = ["English", "French", "Swahili", "Arabic"]
+    for lang in languages:
         markup.add(KeyboardButton(lang))
-    bot.send_message(chat_id, "🌐 Choose your language:", reply_markup=markup)
+    zone = user_selected_zone.get(chat_id, "Africa")
+    bot.send_message(chat_id, f"🌐 Choose your preferred language for {zone} questions:", reply_markup=markup)
 
 # --- Utility Functions ---
 def is_admin(user_id):
@@ -671,20 +676,13 @@ def momo_number_handler(message):
             reply_markup=create_main_menu(chat_id)
         )
 
-# --- Quiz Mode Selection ---
-@bot.message_handler(func=lambda message: message.text == "🎮 General Quiz")
-def general_quiz_handler(message):
+# --- Unified Quiz Mode Selection ---
+@bot.message_handler(func=lambda message: message.text == "🎮 Start Quiz")
+def start_quiz_handler(message):
     chat_id = message.chat.id
-    user_quiz_mode[chat_id] = "general"
-    start_new_quiz(chat_id, "general")
-
-@bot.message_handler(func=lambda message: message.text == "🌍 Zone Quiz")
-def zone_quiz_handler(message):
-    chat_id = message.chat.id
-    user_quiz_mode[chat_id] = "zone"
     send_zone_menu(chat_id)
 
-@bot.message_handler(func=lambda message: message.text in ZONE_QUIZZES.keys())
+@bot.message_handler(func=lambda message: message.text in list(ZONE_QUIZZES.keys()) + ["🌍 General Africa"])
 def zone_selection_handler(message):
     chat_id = message.chat.id
     user_selected_zone[chat_id] = message.text
@@ -694,7 +692,8 @@ def zone_selection_handler(message):
 def language_selection_handler(message):
     chat_id = message.chat.id
     user_selected_language[chat_id] = message.text
-    start_new_quiz(chat_id, "zone")
+    user_quiz_mode[chat_id] = "unified"
+    start_new_quiz(chat_id, "unified")
 
 # --- Unified Quiz Logic ---
 def start_new_quiz(chat_id, mode):
@@ -713,16 +712,25 @@ def start_new_quiz(chat_id, mode):
         )
         bot.send_message(chat_id, "⏸️ You have a paused game. Would you like to resume or start a new one?", reply_markup=markup)
         return
-    quiz = None
-    if mode == "general":
+    
+    # Unified quiz - combine general and zone quizzes
+    zone = user_selected_zone.get(chat_id, "West Africa")
+    lang = user_selected_language.get(chat_id, "English")
+    
+    # Handle "General Africa" as general quiz
+    if zone == "🌍 General Africa":
         quiz = get_random_general_quiz(chat_id)
-    elif mode == "zone":
-        zone = user_selected_zone.get(chat_id, "West Africa")
-        quiz = get_random_zone_quiz(chat_id, zone)
+    else:
+        # 70% chance for zone-specific questions, 30% for general questions
+        if random.random() < 0.7:
+            quiz = get_random_zone_quiz(chat_id, zone)
+        else:
+            quiz = get_random_general_quiz(chat_id)
+    
     if not quiz:
         bot.send_message(chat_id, "❌ Error loading quiz. Please try again.")
         return
-    lang = user_selected_language.get(chat_id, "English")
+    
     lang_code = {"English": "en", "French": "fr", "Swahili": "sw", "Arabic": "ar"}[lang]
     question = translate_text(quiz['q'], lang_code)
     choices = [translate_text(c, lang_code) for c in quiz['choices']]
@@ -738,8 +746,23 @@ def start_new_quiz(chat_id, mode):
     answer_markup = InlineKeyboardMarkup()
     for choice in choices:
         answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
-    answer_markup.add(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"))
-    bot.send_message(chat_id, f"🧠 <b>{'General' if mode == 'general' else user_selected_zone[chat_id]} Quiz:</b>\n{question}", reply_markup=answer_markup)
+    answer_markup.add(
+        InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"),
+        InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"),
+        InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
+    )
+    zone_display = zone if zone != "🌍 General Africa" else "🌍 General Africa"
+    bot.send_message(chat_id, f"🧠 <b>{zone_display} Quiz:</b>\n{question}", reply_markup=answer_markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "main_menu")
+def main_menu_handler(call):
+    chat_id = call.message.chat.id
+    if chat_id in current_question:
+        del current_question[chat_id]
+    if chat_id in paused_games:
+        del paused_games[chat_id]
+    bot.send_message(chat_id, "🏠 Returning to main menu...", reply_markup=create_main_menu(chat_id))
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("answer:"))
 def answer_handler(call):
@@ -774,7 +797,7 @@ def answer_handler(call):
     del current_question[chat_id]
     if tokens > 0:
         time.sleep(2)
-        start_new_quiz(chat_id, user_quiz_mode.get(chat_id, "general"))
+        start_new_quiz(chat_id, user_quiz_mode.get(chat_id, "unified"))
     else:
         bot.send_message(chat_id, "🔚 You've run out of tokens. Use '💰 Buy Tokens' to continue playing!", reply_markup=create_main_menu(chat_id))
 
@@ -831,10 +854,44 @@ def redeem_rewards_handler(message):
     user = get_user_data(chat_id)
     points = user.get('Points', 0)
     markup = InlineKeyboardMarkup()
+    
+    available_rewards = []
+    locked_rewards = []
+    
     for reward, info in REDEEM_OPTIONS.items():
         if points >= info['points']:
-            markup.add(InlineKeyboardButton(f"{reward} ({info['points']} pts)", callback_data=f"redeem:{reward}"))
-    bot.send_message(chat_id, f"🎁 You have {points} points. Choose a reward to redeem:", reply_markup=markup)
+            available_rewards.append((reward, info))
+        else:
+            locked_rewards.append((reward, info))
+    
+    # Show available rewards first
+    for reward, info in available_rewards:
+        markup.add(InlineKeyboardButton(f"✅ {reward} ({info['points']} pts)", callback_data=f"redeem:{reward}"))
+    
+    # Show locked rewards with points needed
+    for reward, info in locked_rewards:
+        points_needed = info['points'] - points
+        markup.add(InlineKeyboardButton(f"🔒 {reward} (need {points_needed} more pts)", callback_data="locked"))
+    
+    message_text = f"""
+🎁 <b>Redeem Rewards</b>
+
+💰 <b>Your Points:</b> {points}
+
+<b>Available Rewards:</b>
+{chr(10).join([f"• {reward} - {info['points']} points" for reward, info in available_rewards])}
+
+<b>Locked Rewards (need more points):</b>
+{chr(10).join([f"• {reward} - {info['points']} points (need {info['points'] - points} more)" for reward, info in locked_rewards])}
+
+Choose a reward to redeem:
+    """
+    
+    bot.send_message(chat_id, message_text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "locked")
+def locked_reward_handler(call):
+    bot.answer_callback_query(call.id, "❌ Not enough points for this reward!")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("redeem:"))
 def redeem_callback_handler(call):
@@ -851,7 +908,7 @@ def redeem_callback_handler(call):
     tokens_to_add = reward.get('amount', 0)
     update_user_tokens_points(chat_id, user['Tokens'] + tokens_to_add, user['Points'] - reward['points'])
     log_point_redemption(chat_id, label)
-    bot.send_message(chat_id, f"🎉 You redeemed: {reward['reward']}!\nOur team will contact you for delivery if applicable.")
+    bot.send_message(chat_id, f"🎉 You redeemed: {reward['reward']}!\n💰 Remaining points: {user['Points'] - reward['points']}\nOur team will contact you for delivery if applicable.")
     bot.answer_callback_query(call.id)
 
 # --- Skip and Pause Handlers ---
@@ -1258,6 +1315,9 @@ def run_daily_lottery():
         for admin_id in ADMIN_CHAT_IDS:
             bot.send_message(admin_id, f"🎯 Daily Lottery Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 5 tokens awarded.")
 
+def schedule_daily_exchange_rate_update():
+    schedule.every().day.at("00:00").do(update_exchange_rate)
+
 def run_scheduler():
     while True:
         schedule.run_pending()
@@ -1265,6 +1325,7 @@ def run_scheduler():
 
 if __name__ == "__main__":
     threading.Thread(target=run_scheduler, daemon=True).start()
+    schedule_daily_exchange_rate_update()
     retry_count = 0
     max_retries = 5
     while retry_count < max_retries:
