@@ -69,8 +69,8 @@ def update_exchange_rate():
 
 TOKEN_PRICING = {
     "5 tokens": {"amount": 5, "price_cedis": 2, "price_usd": round(2/USD_TO_CEDIS_RATE, 2)},
-    "12 tokens": {"amount": 12, "price_cedis": 5, "price_usd": round(5/USD_TO_CEDIS_RATE, 2)},
-    "30 tokens": {"amount": 30, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
+    "15 tokens": {"amount": 15, "price_cedis": 5, "price_usd": round(5/USD_TO_CEDIS_RATE, 2)},
+    "40 tokens": {"amount": 40, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
 }
 
 REDEEM_OPTIONS = {
@@ -1265,6 +1265,14 @@ def run_scheduler():
 
 if __name__ == "__main__":
     threading.Thread(target=run_scheduler, daemon=True).start()
+    
+    # Delete webhook before starting polling to prevent 409 conflict
+    try:
+        bot.delete_webhook()
+        logger.info("Webhook deleted successfully. Starting polling...")
+    except Exception as e:
+        logger.warning(f"Could not delete webhook: {e}")
+    
     retry_count = 0
     max_retries = 5
     while retry_count < max_retries:
