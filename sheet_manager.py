@@ -62,7 +62,10 @@ class SheetManager:
     def get_user_data(self, user_id):
         try:
             def do_get_user():
-                records = self.users_sheet.get_all_records()
+                records = self.users_sheet.get_all_records(expected_headers=[
+                    'UserID', 'Name', 'Username', 'Tokens', 'Points', 'MoMoNumber', 
+                    'LastClaimDate', 'referral_code', 'ReferralEarnings', 'ReferrerID'
+                ])
                 for row in records:
                     if str(row.get('UserID', '')) == str(user_id):
                         return {
@@ -195,7 +198,10 @@ class SheetManager:
     def get_all_users(self):
         try:
             def do_get_users():
-                records = self.users_sheet.get_all_records()
+                records = self.users_sheet.get_all_records(expected_headers=[
+                    'UserID', 'Name', 'Username', 'Tokens', 'Points', 'MoMoNumber', 
+                    'LastClaimDate', 'referral_code', 'ReferralEarnings', 'ReferrerID'
+                ])
                 return [row for row in records]
             return self._retry_on_quota_exceeded(do_get_users)
         except Exception as e:
@@ -205,7 +211,9 @@ class SheetManager:
     def get_pending_transactions(self):
         try:
             def do_get_transactions():
-                records = self.transactions_sheet.get_all_records()
+                records = self.transactions_sheet.get_all_records(expected_headers=[
+                    'user_id', 'transaction_id', 'amount', 'payment_method', 'timestamp'
+                ])
                 return [row for row in records if "PENDING" in row.get("transaction_id", "")]
             return self._retry_on_quota_exceeded(do_get_transactions)
         except Exception as e:
@@ -215,7 +223,10 @@ class SheetManager:
     def find_user_by_referral_code(self, referral_code):
         try:
             def do_find():
-                records = self.users_sheet.get_all_records()
+                records = self.users_sheet.get_all_records(expected_headers=[
+                    'UserID', 'Name', 'Username', 'Tokens', 'Points', 'MoMoNumber', 
+                    'LastClaimDate', 'referral_code', 'ReferralEarnings', 'ReferrerID'
+                ])
                 for row in records:
                     if row.get("referral_code") == referral_code:
                         return row.get("UserID")
