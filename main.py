@@ -69,8 +69,8 @@ def update_exchange_rate():
 
 TOKEN_PRICING = {
     "5 tokens": {"amount": 5, "price_cedis": 2, "price_usd": round(2/USD_TO_CEDIS_RATE, 2)},
-    "12 tokens": {"amount": 12, "price_cedis": 5, "price_usd": round(5/USD_TO_CEDIS_RATE, 2)},
-    "30 tokens": {"amount": 30, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
+    "15 tokens": {"amount": 15, "price_cedis": 5, "price_usd": round(5/USD_TO_CEDIS_RATE, 2)},
+    "40 tokens": {"amount": 40, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
 }
 
 REDEEM_OPTIONS = {
