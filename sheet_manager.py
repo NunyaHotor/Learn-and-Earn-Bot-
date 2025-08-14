@@ -52,7 +52,7 @@ class SheetManager:
                 existing = self.users_sheet.findall(str(user_id))
                 if not existing:
                     referral_code = f"REF{str(user_id)[-6:]}"
-                    row = [str(user_id), name, username or "", 0, 0, "", referral_code, 0, ""]
+                    row = [str(user_id), name, username or "", 0, 0, "", referral_code, 0, "", "Bronze", 0, 0, 0, 0]
                     self.users_sheet.append_row(row)
                     logger.info(f"Registered user: {user_id}")
             self._retry_on_quota_exceeded(do_register)
