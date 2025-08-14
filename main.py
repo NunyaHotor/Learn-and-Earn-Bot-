@@ -29,6 +29,10 @@ from sheet_manager import (
     find_user_by_referral_code,
     update_transaction_status
 )
+from translation_service import translation_service
+from exchange_rate_service import exchange_rate_service, start_rate_updater
+from user_preference_service import user_preference_service
+from ui_enhancer import ui_enhancer
 
 # --- Setup ---
 load_dotenv()
