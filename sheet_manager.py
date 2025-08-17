@@ -83,6 +83,64 @@ class SheetManager:
             logger.error(f"Error fetching user data for {user_id}: {e}")
             return None
 
+    def get_user_data_flexible(self, user_id):
+        """Get user data with flexible column mapping"""
+        try:
+            all_values = self.users_sheet.get_all_values()
+            if not all_values:
+                return None
+
+            headers = all_values[0]
+            column_map = {}
+            for i, header in enumerate(headers):
+                header_lower = str(header).lower().strip()
+                if 'userid' in header_lower or 'user_id' in header_lower:
+                    column_map['UserID'] = i
+                elif 'name' in header_lower and 'user' not in header_lower:
+                    column_map['Name'] = i
+                elif 'username' in header_lower:
+                    column_map['Username'] = i
+                elif 'tokens' in header_lower:
+                    column_map['Tokens'] = i
+                elif 'points' in header_lower:
+                    column_map['Points'] = i
+                elif 'momo' in header_lower or 'mobile' in header_lower:
+                    column_map['MoMoNumber'] = i
+                elif 'referral_code' in header_lower or 'referralcode' in header_lower:
+                    column_map['referral_code'] = i
+                elif 'referralearnings' in header_lower or 'referral_earnings' in header_lower:
+                    column_map['ReferralEarnings'] = i
+
+            # Use default positions if not found
+            default_map = {
+                'UserID': 0,
+                'Name': 1,
+                'Username': 2,
+                'Tokens': 3,
+                'Points': 4,
+                'MoMoNumber': 5,
+                'referral_code': 6,
+                'ReferralEarnings': 7
+            }
+            final_map = {**default_map, **column_map}
+
+            for row in all_values[1:]:
+                if len(row) > final_map['UserID'] and str(row[final_map['UserID']]) == str(user_id):
+                    return {
+                        'UserID': str(row[final_map['UserID']]),
+                        'Name': str(row[final_map['Name']]) if len(row) > final_map['Name'] else 'Unknown',
+                        'Username': str(row[final_map['Username']]) if len(row) > final_map['Username'] else '',
+                        'Tokens': float(row[final_map['Tokens']]) if len(row) > final_map['Tokens'] and str(row[final_map['Tokens']]).strip() else 0.0,
+                        'Points': float(row[final_map['Points']]) if len(row) > final_map['Points'] and str(row[final_map['Points']]).strip() else 0.0,
+                        'ReferralEarnings': float(row[final_map['ReferralEarnings']]) if len(row) > final_map['ReferralEarnings'] and str(row[final_map['ReferralEarnings']]).strip() else 0.0,
+                        'MoMoNumber': str(row[final_map['MoMoNumber']]) if len(row) > final_map['MoMoNumber'] else '',
+                        'referral_code': str(row[final_map['referral_code']]) if len(row) > final_map['referral_code'] else f"REF{str(user_id)[-6:]}"
+                    }
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching user data for {user_id}: {e}")
+            return None
+
     def update_user_tokens_points(self, user_id, tokens, points):
         try:
             def do_update():
