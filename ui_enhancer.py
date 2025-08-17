@@ -93,7 +93,7 @@ class UIEnhancer:
     def create_crypto_payment_menu(self):
         """Create crypto payment menu"""
         markup = InlineKeyboardMarkup(row_width=1)
-        
+
         crypto_options = [
             ("Bitcoin (BTC)", "btc"),
             ("Ethereum (ETH)", "eth"),
@@ -102,14 +102,13 @@ class UIEnhancer:
             ("BNB (BSC)", "bnb"),
             ("Solana (SOL)", "sol")
         ]
-        
+
+        for name, crypto in crypto_options:
+            markup.add(
+                InlineKeyboardButton(
                     f"💎 {name}",
                     callback_data=f"crypto:{crypto}"
                 )
             )
         return markup
-        
-    def create_notification_button(self, text, callback_data, emoji="🔔"):
-        """Create notification button"""
-        return InlineKeyboardButton(f"{emoji} {text}", callback_data=callback_data)
 
