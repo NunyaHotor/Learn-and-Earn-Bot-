@@ -281,7 +281,7 @@ ZONE_QUIZZES = {
         {"q": "Which country was home to the Buganda Kingdom?", "a": "Uganda", "choices": ["Uganda", "Kenya", "Tanzania", "Rwanda"]},
         {"q": "Who was the famous queen of Sheba?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
         {"q": "Which country is known for the ancient city of Lalibela?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
-        {"q": "Which country was the site of the 1994 genocide?", "a": "Rwanda", "choices": ["Rwanda", "Kenya", "Uganda", "Tanzania"]},
+        {"q": "Which country was the site of the 1994 genocide?", "a": "Rwanda", "choices": ["Rwanda", "Burundi", "Uganda", "Kenya"]},
         {"q": "What is the capital of Burundi?", "a": "Gitega", "choices": ["Gitega", "Bujumbura", "Kigali", "Nairobi"]},
         {"q": "Which country is famous for the Serengeti National Park?", "a": "Tanzania", "choices": ["Tanzania", "Kenya", "Uganda", "Rwanda"]},
         {"q": "What is the official language of Uganda?", "a": "English", "choices": ["English", "Swahili", "French", "Arabic"]},
@@ -873,7 +873,7 @@ def start_handler(message):
             bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}!")
             bot.send_message(chat_id, f"✅ You joined with a referral code from {referrer_user['Name']}. They have been rewarded!")
     if not user.get("MoMoNumber"):
-               bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
+       
         user_momo_pending[chat_id] = "awaiting_momo"
         return
 
