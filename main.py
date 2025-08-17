@@ -281,7 +281,7 @@ ZONE_QUIZZES = {
         {"q": "Which country was home to the Buganda Kingdom?", "a": "Uganda", "choices": ["Uganda", "Kenya", "Tanzania", "Rwanda"]},
         {"q": "Who was the famous queen of Sheba?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
         {"q": "Which country is known for the ancient city of Lalibela?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
-        {"q": "Which country was the site of the 1994 genocide?", "a": "Rwanda", "choices": ["Rwanda
+        {"q": "Which country was the site of the 1994 genocide?", "a": "Rwanda", "choices": ["Rwanda", "Kenya", "Uganda", "Tanzania"]},
         {"q": "What is the capital of Burundi?", "a": "Gitega", "choices": ["Gitega", "Bujumbura", "Kigali", "Nairobi"]},
         {"q": "Which country is famous for the Serengeti National Park?", "a": "Tanzania", "choices": ["Tanzania", "Kenya", "Uganda", "Rwanda"]},
         {"q": "What is the official language of Uganda?", "a": "English", "choices": ["English", "Swahili", "French", "Arabic"]},
@@ -426,7 +426,28 @@ MOTIVATIONAL_MESSAGES = [
 
 # --- Menus ---
 def create_main_menu(chat_id):
-    return ui_enhancer.create_main_menu(is_admin=is_admin(chat_id))
+    is_admin_user = is_admin(chat_id)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(
+        KeyboardButton("🎮 Start Quiz"),
+        KeyboardButton("🌍 Zone Quiz"),
+        KeyboardButton("💰 Buy Tokens"),
+        KeyboardButton("🎁 Redeem Rewards"),
+        KeyboardButton("🎁 Daily Reward"),
+        KeyboardButton("📊 My Stats"),
+        KeyboardButton("📈 Progress"),
+        KeyboardButton("👥 Referral"),
+        KeyboardButton("🏆 Leaderboard"),
+        KeyboardButton("ℹ️ Help"),
+        KeyboardButton("💬 Send Feedback"),
+        KeyboardButton("🛒 Marketplace"),
+        KeyboardButton("🌐 Current Affairs"),
+        KeyboardButton("🌍 African Countries"),
+        KeyboardButton("🎁 Tiered Rewards"),
+    )
+    if is_admin_user:
+        markup.add(KeyboardButton("🔧 Admin Menu"))
+    return markup
 
 def send_zone_menu(chat_id):
     markup = ui_enhancer.create_zone_menu()
@@ -572,41 +593,37 @@ def translate_text(text, lang_code):
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     chat_id = message.chat.id
-    
+
     # Extract referral code from start command
     referral_code = None
-    referrer_id = None
+    referrer_user = None
     if message.text and len(message.text.split()) > 1:
         referral_code = message.text.split()[1]
-        referrer_id = find_user_by_referral_code(referral_code)
-    
+        referrer_user = find_user_by_referral_code(referral_code)
+
     user = get_user_data(chat_id)
     if not user:
+        # If referrer_user is found, pass their UserID to register_user
+        referrer_id = referrer_user['UserID'] if referrer_user else None
         register_user(chat_id, message.from_user.first_name, message.from_user.username, referrer_id)
         user = get_user_data(chat_id)
-        
         # Reward referrer if this is a new referral
-        if referrer_id and user:
-            reward_referrer(referrer_id, 2)  # 2 tokens for referral
-            increment_referral_count(referrer_id, chat_id)
-            logger.info(f"Referral reward: User {referrer_id} got 2 tokens for referring {chat_id}")
-    
+        if referrer_user and user:
+            reward_referrer(referrer_user['UserID'], 2)  # 2 tokens for referral
+            increment_referral_count(referrer_user['UserID'], chat_id)
+            logger.info(f"Referral reward: User {referrer_user['UserID']} got 2 tokens for referring {chat_id}")
+            bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}!")
+            bot.send_message(chat_id, f"✅ You joined with a referral code from {referrer_user['Name']}. They have been rewarded!")
     if not user.get("MoMoNumber"):
         bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
         user_momo_pending[chat_id] = "awaiting_momo"
         return
-    
-    # Welcome message for new referrals
+
     welcome_msg = WELCOME_MESSAGE.format(
         name=user.get('Name', message.from_user.first_name),
         about_us=ABOUT_US,
         motivation=random.choice(MOTIVATIONAL_MESSAGES)
     )
-    
-    # Add referral bonus message for new users who joined via referral
-    if referrer_id and user:
-        welcome_msg += "\n\n🎉 Welcome! You've been referred by a friend and received 3 bonus tokens!"
-    
     bot.send_message(chat_id, welcome_msg, reply_markup=create_main_menu(chat_id))
 
 @bot.message_handler(func=lambda message: message.chat.id in user_momo_pending)
@@ -691,8 +708,7 @@ def start_new_quiz(chat_id, mode):
         InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"),
         InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")
     )
-    if mode == "zone":
-        answer_markup.add(InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main"))
+    answer_markup.add(InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main"))
     zone_name = user_selected_zone.get(chat_id, "General")
     bot.send_message(chat_id, f"🧠 <b>{'General' if mode == 'general' else zone_name} Quiz:</b>\n{question}", reply_markup=answer_markup)
 
@@ -836,6 +852,11 @@ def custom_token_handler(message):
 @bot.message_handler(func=lambda message: message.text == "🎁 Redeem Rewards")
 def redeem_rewards_handler(message):
     chat_id = message.chat.id
+   
+   
+
+   
+   
     user = get_user_data(chat_id)
     points = user.get('Points', 0)
     markup = InlineKeyboardMarkup()
@@ -1128,7 +1149,7 @@ def process_broadcast_message(message):
     sheet_manager = get_sheet_manager()
     users = sheet_manager.get_all_users()
     for user in users:
-        user_id = user['user_id']
+        user_id = user['UserID']
         try:
             bot.send_message(user_id, f"📢 <b>Announcement</b>\n\n{broadcast_text}")
         except Exception as e:
@@ -1208,7 +1229,9 @@ def country_bio_handler(call):
     if not country:
         bot.answer_callback_query(call.id, "Country not found.")
         return
-    text = f"🌍 <b>{country['name']}</b>\n\n{country['bio']}\n\n🔗 <a href='{country['website']}'>Official Website</a>"
+    bio = country.get('bio', 'No bio available.')
+    website = country.get('website', '#')
+    text = f"🌍 <b>{country['name']}</b>\n\n{bio}\n\n🔗 <a href='{website}'>Official Website</a>"
     bot.send_message(chat_id, text, parse_mode="HTML", disable_web_page_preview=False)
     bot.answer_callback_query(call.id)
 
@@ -1339,7 +1362,8 @@ def process_item_listing(message):
     bot.send_message(chat_id, f"✅ Item listed successfully!\n\n{format_listing(listing)}", reply_markup=create_main_menu(chat_id))
 
 def format_listing(listing):
-    return f"🛒 <b>{listing['item']}</b>\n💰 Price: {listing['price']} tokens\n📜 Description: {listing['desc']}\n📞 Contact: {listing['contact']}"
+    contact = f"@{listing['username']}" if listing['username'] and listing['username'] != 'None' else listing['contact']
+    return f"🛒 <b>{listing['item']}</b>\n💰 Price: {listing['price']} tokens\n📜 Description: {listing['desc']}\n📞 Contact: {contact}"
 
 @bot.message_handler(func=lambda message: message.text == "🔍 Browse Marketplace")
 def browse_marketplace_handler(message):

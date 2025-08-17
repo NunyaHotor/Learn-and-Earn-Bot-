@@ -6,81 +6,6 @@ from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# sheet_manager.py
-import gspread
-import logging
-from oauth2client.service_account import ServiceAccountCredentials
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Define the Google Sheets API scope
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-]
-
-# Load credentials from gcp-service-account.json
-creds = ServiceAccountCredentials.from_json_keyfile_name("gcp-service-account.json", scope)
-client = gspread.authorize(creds)
-
-# Open main user sheet
-sheet = client.open("Learn4Cash_Users").sheet1
-
-# Define the correct headers
-EXPECTED_HEADERS = [
-    "UserID", "Name", "Username", "Tokens", "Points", "ReferrerID",
-    "ReferralEarnings", "MoMoNumber"
-]
-
-def ensure_headers():
-    """Ensure sheet headers match EXPECTED_HEADERS."""
-    existing = sheet.row_values(1)
-    if existing != EXPECTED_HEADERS:
-        logger.warning("Fixing headers in sheet...")
-        if existing:
-            sheet.delete_rows(1)
-        sheet.insert_row(EXPECTED_HEADERS, 1)
-        logger.info("✅ Headers fixed.")
-
-# Run header check at import
-ensure_headers()
-
-def get_user_row(user_id):
-    records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
-    for idx, row in enumerate(records):
-        if str(row['UserID']) == str(user_id):
-            return idx + 2
-    return None
-
-def register_user(user_id, name, username, referrer_id=None, momo_number=""):
-    if get_user_row(user_id):
-        return
-    new_row = [user_id, name, username or '', 3, 0, referrer_id or '', 0, momo_number]
-    sheet.append_row(new_row)
-
-def update_user_tokens_points(user_id, tokens, points):
-    row = get_user_row(user_id)
-    if not row:
-        return
-    sheet.update_cell(row, 4, tokens)
-    sheet.update_cell(row, 5, points)
-
-def get_user_data(user_id):
-    row = get_user_row(user_id)
-    if not row:
-        return None
-    data = sheet.row_values(row)
-    return dict(zip(EXPECTED_HEADERS, data))
-
-def reward_referrer(ref_id):
-    row = get_user_row(ref_id)
-    if not row:
-        return
-    tokens = int(sheet.cell(row, 4).value)
-    sheet.update_cell(row, 4, tokens + 2)  # now 2 tokens per referral
-
-
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -127,7 +52,7 @@ class SheetManager:
                 existing = self.users_sheet.findall(str(user_id))
                 if not existing:
                     referral_code = f"REF{str(user_id)[-6:]}"
-                    row = [str(user_id), name, username or "", 0, 0, "", referral_code, 0, ""]
+                    row = [str(user_id), name, username or "", 3, 0, referrer_id or "", referral_code, 0, ""]
                     self.users_sheet.append_row(row)
                     logger.info(f"Registered user: {user_id}")
             self._retry_on_quota_exceeded(do_register)
@@ -137,11 +62,11 @@ class SheetManager:
     def get_user_data(self, user_id):
         try:
             def do_get_user():
-                records = self.users_sheet.get_all_records(expected_headers=None)
+                records = self.users_sheet.get_all_records(expected_headers=['UserID', 'Name', 'Username', 'Tokens', 'Points', 'ReferralEarnings', 'ReferrerID', 'MoMoNumber', 'LastClaimDate', 'referral_code'])
                 for row in records:
                     if str(row.get('UserID', '')) == str(user_id):
                         return {
-                            'UserID': row.get('UserID', ''),
+                            'UserID': str(row.get('UserID', '')),
                             'Name': row.get('Name', 'Unknown'),
                             'Username': row.get('Username', ''),
                             'Tokens': float(row.get('Tokens', 0)),
@@ -290,10 +215,10 @@ class SheetManager:
     def find_user_by_referral_code(self, referral_code):
         try:
             def do_find():
-                records = self.users_sheet.get_all_records()
-                for row in records:
-                    if row.get("referral_code") == referral_code:
-                        return row.get("UserID")
+                users = self.get_all_users()
+                for user in users:
+                    if user.get('referral_code') == referral_code:
+                        return user
                 return None
             return self._retry_on_quota_exceeded(do_find)
         except Exception as e:
