@@ -1,20 +1,18 @@
-#```python
 import os
+import logging
 import random
 import time
-import logging
 import threading
-from datetime import datetime, timezone
-from dotenv import load_dotenv
-from telebot import TeleBot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from googletrans import Translator
-import json
+import requests
 import schedule
 import traceback
-import requests  # Added to handle potential ReadTimeout exceptions in polling
+from datetime import datetime, timezone
+from dotenv import load_dotenv
 
-from sheet_manager import (
+from telebot import TeleBot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+
+from sheet_manager_fix import (
     register_user,
     get_user_data,
     update_user_tokens_points,
@@ -24,53 +22,38 @@ from sheet_manager import (
     log_point_redemption,
     update_user_momo,
     check_and_give_daily_reward,
-    update_last_claim_date,
     get_sheet_manager,
     find_user_by_referral_code,
     update_transaction_status
 )
+from translation_service import translation_service
+from exchange_rate_service import exchange_rate_service
+from ui_enhancer_fixed import ui_enhancer
+from user_preference_service import user_preference_service
 
 # --- Setup ---
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Parse admin IDs from environment variable
+ADMIN_CHAT_IDS = [
+    int(admin_id.strip())
+    for admin_id in os.getenv("ADMIN_CHAT_IDS", "").split(",")
+    if admin_id.strip().isdigit()
+]
+
 API_KEY = os.getenv("TELEGRAM_API_KEY") or "YOUR_FALLBACK_API_KEY"
 bot = TeleBot(API_KEY, parse_mode='HTML')
-ADMIN_CHAT_IDS = [2145372547]
-translator = Translator()
 
-USD_TO_CEDIS_RATE = 11.8
+
+USD_TO_CEDIS_RATE = exchange_rate_service.get_rate()
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
-
-def fetch_exchange_rate():
-    """Fetch the latest USD to GHS exchange rate from API."""
-    try:
-        import requests
-        response = requests.get("https://api.exchangerate-api.com/v4/latest/USD")
-        data = response.json()
-        rate = data['rates']['GHS']
-        logger.info(f"Updated exchange rate: 1 USD = {rate} GHS")
-        return rate
-    except Exception as e:
-        logger.error(f"Error fetching exchange rate: {e}")
-        return USD_TO_CEDIS_RATE  # Fallback to current rate
-
-def update_exchange_rate():
-    """Update the global exchange rate."""
-    global USD_TO_CEDIS_RATE
-    new_rate = fetch_exchange_rate()
-    if new_rate != USD_TO_CEDIS_RATE:
-        USD_TO_CEDIS_RATE = new_rate
-        # Update pricing with new rate
-        for package in TOKEN_PRICING.values():
-            package['price_usd'] = round(package['price_cedis']/USD_TO_CEDIS_RATE, 2)
-        logger.info("Exchange rate updated successfully")
 
 TOKEN_PRICING = {
     "5 tokens": {"amount": 5, "price_cedis": 2, "price_usd": round(2/USD_TO_CEDIS_RATE, 2)},
-    "12 tokens": {"amount": 12, "price_cedis": 5, "price_usd": round(5/USD_TO_CEDIS_RATE, 2)},
-    "30 tokens": {"amount": 30, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
+    "15 tokens": {"amount": 15, "price_cedis": 5, "price_usd": round(5/USD_TO_CEDIS_RATE, 2)},
+    "40 tokens": {"amount": 40, "price_cedis": 10, "price_usd": round(10/USD_TO_CEDIS_RATE, 2)}
 }
 
 REDEEM_OPTIONS = {
@@ -400,22 +383,293 @@ ZONE_QUIZZES = {
     ]
 }
 
+AFRICAN_COUNTRIES = [
+    {
+        "name": "Algeria",
+        "bio": "Algeria is the largest country in Africa, located in North Africa. It is known for its vast Sahara desert and rich oil and gas resources. Capital: Algiers.",
+        "website": "https://www.el-mouradia.dz/"
+    },
+    {
+        "name": "Angola",
+        "bio": "Angola is a Southern African nation with a diverse landscape and a history of Portuguese colonization. Capital: Luanda.",
+        "website": "https://www.governo.gov.ao/"
+    },
+    {
+        "name": "Benin",
+        "bio": "Benin is a West African country known for its rich history as the birthplace of the Vodun (Voodoo) religion and the Dahomey Kingdom. Capital: Porto-Novo.",
+        "website": "https://www.gouv.bj/"
+    },
+    {
+        "name": "Botswana",
+        "bio": "Botswana is a landlocked country in Southern Africa, famous for its stable democracy and the Okavango Delta. Capital: Gaborone.",
+        "website": "https://www.gov.bw/"
+    },
+    {
+        "name": "Burkina Faso",
+        "bio": "Burkina Faso is a landlocked country in West Africa, known for its vibrant culture and music. Capital: Ouagadougou.",
+        "website": "https://www.gouvernement.gov.bf/"
+    },
+    {
+        "name": "Burundi",
+        "bio": "Burundi is a small, landlocked country in East Africa, bordered by Rwanda, Tanzania, and the Democratic Republic of the Congo. Capital: Gitega.",
+        "website": "https://www.presidence.gov.bi/"
+    },
+    {
+        "name": "Cabo Verde",
+        "bio": "Cabo Verde (Cape Verde) is an island country in the Atlantic Ocean off the coast of West Africa, known for its Creole Portuguese-African culture. Capital: Praia.",
+        "website": "https://www.governo.cv/"
+    },
+    {
+        "name": "Cameroon",
+        "bio": "Cameroon is a Central African country with diverse geography and cultures, often called 'Africa in miniature.' Capital: Yaoundé.",
+        "website": "https://www.spm.gov.cm/"
+    },
+    {
+        "name": "Central African Republic",
+        "bio": "The Central African Republic is a landlocked country in Central Africa, rich in natural resources but affected by conflict. Capital: Bangui.",
+        "website": "https://www.presidence.cf/"
+    },
+    {
+        "name": "Chad",
+        "bio": "Chad is a landlocked country in north-central Africa, known for Lake Chad and the Sahara Desert. Capital: N'Djamena.",
+        "website": "https://www.presidence.td/"
+    },
+    {
+        "name": "Comoros",
+        "bio": "Comoros is an island nation in the Indian Ocean, located between Madagascar and Mozambique. Capital: Moroni.",
+        "website": "https://www.beit-salam.km/"
+    },
+    {
+        "name": "Congo",
+        "bio": "The Republic of the Congo is located in Central Africa, known for its rainforests and the Congo River. Capital: Brazzaville.",
+        "website": "https://www.gouvernement.cg/"
+    },
+    {
+        "name": "Democratic Republic of the Congo",
+        "bio": "The DRC is Africa's second-largest country, rich in minerals and home to the Congo Rainforest. Capital: Kinshasa.",
+        "website": "https://www.presidence.cd/"
+    },
+    {
+        "name": "Djibouti",
+        "bio": "Djibouti is a small country in the Horn of Africa, strategically located on the Red Sea. Capital: Djibouti.",
+        "website": "https://www.presidence.dj/"
+    },
+    {
+        "name": "Egypt",
+        "bio": "Egypt is a transcontinental country linking northeast Africa with the Middle East, famous for its ancient civilization and pyramids. Capital: Cairo.",
+        "website": "https://www.egypt.gov.eg/"
+    },
+    {
+        "name": "Equatorial Guinea",
+        "bio": "Equatorial Guinea is a small Central African country with significant oil reserves. Capital: Malabo.",
+        "website": "https://www.guineaecuatorialpress.com/"
+    },
+    {
+        "name": "Eritrea",
+        "bio": "Eritrea is a country in the Horn of Africa, known for its Red Sea coastline and Italian colonial heritage. Capital: Asmara.",
+        "website": "https://www.shabait.com/"
+    },
+    {
+        "name": "Eswatini",
+        "bio": "Eswatini (formerly Swaziland) is a small, landlocked monarchy in Southern Africa. Capital: Mbabane.",
+        "website": "https://www.gov.sz/"
+    },
+    {
+        "name": "Ethiopia",
+        "bio": "Ethiopia is a landlocked country in the Horn of Africa, known for its ancient history and diverse cultures. Capital: Addis Ababa.",
+        "website": "https://www.ethiopia.gov.et/"
+    },
+    {
+        "name": "Gabon",
+        "bio": "Gabon is a Central African country with significant oil reserves and rainforests. Capital: Libreville.",
+        "website": "https://www.gouvernement.ga/"
+    },
+    {
+        "name": "Gambia",
+        "bio": "The Gambia is the smallest country within mainland Africa, known for its river and beaches. Capital: Banjul.",
+        "website": "https://www.gov.gm/"
+    },
+    {
+        "name": "Ghana",
+        "bio": "Ghana is a West African country known for its gold, cocoa, and vibrant culture. Capital: Accra.",
+        "website": "https://www.ghana.gov.gh/"
+    },
+    {
+        "name": "Guinea",
+        "bio": "Guinea is a West African country rich in minerals, especially bauxite. Capital: Conakry.",
+        "website": "https://www.gouvernement.gov.gn/"
+    },
+    {
+        "name": "Guinea-Bissau",
+        "bio": "Guinea-Bissau is a small West African country with a history of Portuguese colonization. Capital: Bissau.",
+        "website": "https://www.governo.gw/"
+    },
+    {
+        "name": "Ivory Coast",
+        "bio": "Ivory Coast (Côte d'Ivoire) is a West African country, the world's largest cocoa producer. Capital: Yamoussoukro.",
+        "website": "https://www.gouv.ci/"
+    },
+    {
+        "name": "Kenya",
+        "bio": "Kenya is an East African country known for its savannahs, wildlife, and the Great Rift Valley. Capital: Nairobi.",
+        "website": "https://www.mygov.go.ke/"
+    },
+    {
+        "name": "Lesotho",
+        "bio": "Lesotho is a high-altitude, landlocked kingdom encircled by South Africa. Capital: Maseru.",
+        "website": "https://www.gov.ls/"
+    },
+    {
+        "name": "Liberia",
+        "bio": "Liberia is a West African country founded by freed American slaves. Capital: Monrovia.",
+        "website": "https://www.emansion.gov.lr/"
+    },
+    {
+        "name": "Libya",
+        "bio": "Libya is a North African country with a Mediterranean coastline and vast desert interior. Capital: Tripoli.",
+        "website": "https://www.pm.gov.ly/"
+    },
+    {
+        "name": "Madagascar",
+        "bio": "Madagascar is an island nation off the southeast coast of Africa, known for its unique wildlife. Capital: Antananarivo.",
+        "website": "https://www.presidence.gov.mg/"
+    },
+    {
+        "name": "Malawi",
+        "bio": "Malawi is a landlocked country in southeastern Africa, known for Lake Malawi. Capital: Lilongwe.",
+        "website": "https://www.malawi.gov.mw/"
+    },
+    {
+        "name": "Mali",
+        "bio": "Mali is a landlocked country in West Africa, home to the ancient city of Timbuktu. Capital: Bamako.",
+        "website": "https://www.gouv.ml/"
+    },
+    {
+        "name": "Mauritania",
+        "bio": "Mauritania is a country in Northwest Africa, much of it covered by the Sahara Desert. Capital: Nouakchott.",
+        "website": "https://www.gouvernement.mr/"
+    },
+    {
+        "name": "Mauritius",
+        "bio": "Mauritius is an island nation in the Indian Ocean, known for its beaches and multicultural society. Capital: Port Louis.",
+        "website": "https://www.govmu.org/"
+    },
+    {
+        "name": "Morocco",
+        "bio": "Morocco is a North African country bordering the Atlantic Ocean and Mediterranean Sea. Capital: Rabat.",
+        "website": "https://www.maroc.ma/"
+    },
+    {
+        "name": "Mozambique",
+        "bio": "Mozambique is a southeastern African nation with a long Indian Ocean coastline. Capital: Maputo.",
+        "website": "https://www.portaldogoverno.gov.mz/"
+    },
+    {
+        "name": "Namibia",
+        "bio": "Namibia is a country in southwest Africa, known for the Namib Desert and diverse wildlife. Capital: Windhoek.",
+        "website": "https://www.gov.na/"
+    },
+    {
+        "name": "Niger",
+        "bio": "Niger is a landlocked country in West Africa, named after the Niger River. Capital: Niamey.",
+        "website": "https://www.gouv.ne/"
+    },
+    {
+        "name": "Nigeria",
+        "bio": "Nigeria is Africa's most populous country, known for its Nollywood film industry and oil reserves. Capital: Abuja.",
+        "website": "https://www.nigeria.gov.ng/"
+    },
+    {
+        "name": "Rwanda",
+        "bio": "Rwanda is a landlocked country in East Africa, known as the 'Land of a Thousand Hills.' Capital: Kigali.",
+        "website": "https://www.gov.rw/"
+    },
+    {
+        "name": "Sao Tome and Principe",
+        "bio": "Sao Tome and Principe is an island nation in the Gulf of Guinea, Central Africa. Capital: São Tomé.",
+        "website": "https://www.gov.st/"
+    },
+    {
+        "name": "Senegal",
+        "bio": "Senegal is a West African country with a rich history and vibrant music scene. Capital: Dakar.",
+        "website": "https://www.sec.gouv.sn/"
+    },
+    {
+        "name": "Seychelles",
+        "bio": "Seychelles is an archipelago of 115 islands in the Indian Ocean, off East Africa. Capital: Victoria.",
+        "website": "https://www.statehouse.gov.sc/"
+    },
+    {
+        "name": "Sierra Leone",
+        "bio": "Sierra Leone is a West African country known for its white-sand beaches and tragic civil war history. Capital: Freetown.",
+        "website": "https://statehouse.gov.sl/"
+    },
+    {
+        "name": "Somalia",
+        "bio": "Somalia is a country in the Horn of Africa, with the longest coastline on Africa's mainland. Capital: Mogadishu.",
+        "website": "https://www.somaligov.net/"
+    },
+    {
+        "name": "South Africa",
+        "bio": "South Africa is the southernmost country in Africa, known for its diversity, history, and natural beauty. Capital: Pretoria (administrative).",
+        "website": "https://www.gov.za/"
+    },
+    {
+        "name": "South Sudan",
+        "bio": "South Sudan is the world's newest country, gaining independence in 2011. Capital: Juba.",
+        "website": "https://www.goss.org/"
+    },
+    {
+        "name": "Sudan",
+        "bio": "Sudan is a country in Northeast Africa, known for its ancient pyramids and the Nile River. Capital: Khartoum.",
+        "website": "https://www.sudan.gov.sd/"
+    },
+    {
+        "name": "Tanzania",
+        "bio": "Tanzania is an East African country known for Mount Kilimanjaro and Serengeti National Park. Capital: Dodoma.",
+        "website": "https://www.tanzania.go.tz/"
+    },
+    {
+        "name": "Togo",
+        "bio": "Togo is a narrow West African country on the Gulf of Guinea, known for its palm-lined beaches. Capital: Lomé.",
+        "website": "https://www.republiquetogolaise.tg/"
+    },
+    {
+        "name": "Tunisia",
+        "bio": "Tunisia is a North African country bordering the Mediterranean Sea and Sahara Desert. Capital: Tunis.",
+        "website": "https://www.tunisie.gov.tn/"
+    },
+    {
+        "name": "Uganda",
+        "bio": "Uganda is a landlocked country in East Africa, known for its wildlife and Lake Victoria. Capital: Kampala.",
+        "website": "https://www.gou.go.ug/"
+    },
+    {
+        "name": "Zambia",
+        "bio": "Zambia is a landlocked country in Southern Africa, home to Victoria Falls. Capital: Lusaka.",
+        "website": "https://www.zambia.gov.zm/"
+    },
+    {
+        "name": "Zimbabwe",
+        "bio": "Zimbabwe is a landlocked country in Southern Africa, known for its dramatic landscape and diverse wildlife. Capital: Harare.",
+        "website": "https://www.zim.gov.zw/"
+    }
+]
+
 # --- Global State ---
 current_question = {}
-custom_token_requests = {}
 player_progress = {}
-skipped_questions = {}
 paused_games = {}
 pending_token_purchases = {}
 user_question_pools = {}
-all_users = set()
+zone_question_pools = {}
 user_feedback_mode = {}
 user_momo_pending = {}
 user_selected_zone = {}
 user_selected_language = {}
-user_quiz_index = {}
 user_quiz_mode = {}
-zone_question_pools = {}
+custom_token_requests = {}
+country_list_page = {}  # Add this line to your global state
 
 MOTIVATIONAL_MESSAGES = [
     "🌟 Believe in yourself! Every question you answer makes you smarter!",
@@ -437,93 +691,105 @@ MOTIVATIONAL_MESSAGES = [
 
 # --- Menus ---
 def create_main_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    buttons = [
-        KeyboardButton("🎮 General Quiz"),
+    is_admin_user = is_admin(chat_id)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(
+        KeyboardButton("🎮 Start Quiz"),
         KeyboardButton("🌍 Zone Quiz"),
         KeyboardButton("💰 Buy Tokens"),
         KeyboardButton("🎁 Redeem Rewards"),
         KeyboardButton("🎁 Daily Reward"),
         KeyboardButton("📊 My Stats"),
         KeyboardButton("📈 Progress"),
-        KeyboardButton("👥 Referrals"),
+        KeyboardButton("👥 Referral"),
         KeyboardButton("🏆 Leaderboard"),
         KeyboardButton("ℹ️ Help"),
-        KeyboardButton("💬 Send Feedback")
-    ]
-    if is_admin(chat_id):
-        buttons.append(KeyboardButton("🔧 Admin Menu"))
-    markup.add(*buttons)
+        KeyboardButton("💬 Send Feedback"),
+        KeyboardButton("🛒 Marketplace"),
+        KeyboardButton("🌐 Current Affairs"),
+        KeyboardButton("🌍 African Countries"),
+        KeyboardButton("🎁 Tiered Rewards"),
+    )
+    if is_admin_user:
+        markup.add(KeyboardButton("🔧 Admin Menu"))
     return markup
 
+def send_zone_menu(chat_id):
+    markup = ui_enhancer.create_zone_menu()
+    bot.send_message(chat_id, "🌍 Choose an African zone to learn about:", reply_markup=markup)
+
+def send_language_menu(chat_id):
+    markup = ui_enhancer.create_language_menu()
+    bot.send_message(chat_id, "🌐 Choose your language:", reply_markup=markup)
+
 def create_admin_menu():
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(
         KeyboardButton("📊 Admin Dashboard"),
-        KeyboardButton("🎯 Run Daily Lottery"),
-        KeyboardButton("🎰 Run Weekly Raffle"),
         KeyboardButton("📋 View Pending Tokens"),
         KeyboardButton("✅ Approve Token Purchase"),
-        KeyboardButton("📈 User Stats"),
         KeyboardButton("📢 Broadcast Message"),
+        KeyboardButton("📈 User Stats"),
+        KeyboardButton("🎯 Run Daily Lottery"),
+        KeyboardButton("🎰 Run Weekly Raffle"),
         KeyboardButton("🔙 Back to User Menu")
     )
     return markup
 
-def send_zone_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    for zone in ZONE_QUIZZES.keys():
-        markup.add(KeyboardButton(zone))
-    bot.send_message(chat_id, "🌍 Choose an African zone to learn about:", reply_markup=markup)
-
-def send_language_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    for lang in ["English", "French", "Swahili", "Arabic"]:
-        markup.add(KeyboardButton(lang))
-    bot.send_message(chat_id, "🌐 Choose your language:", reply_markup=markup)
+def create_tier_menu():
+    markup = InlineKeyboardMarkup()
+    markup.add(
+        InlineKeyboardButton("🥉 Bronze", callback_data="tier:bronze"),
+        InlineKeyboardButton("🥈 Silver", callback_data="tier:silver"),
+        InlineKeyboardButton("🥇 Gold", callback_data="tier:gold"),
+        InlineKeyboardButton("🏆 Platinum", callback_data="tier:platinum"),
+    )
+    return markup
 
 # --- Utility Functions ---
 def is_admin(user_id):
-    return user_id in ADMIN_CHAT_IDS
+    return int(user_id) in ADMIN_CHAT_IDS
 
 def notify_admin_token_purchase(user_id, package_info, payment_method):
     try:
         user_data = get_user_data(user_id)
         if not user_data:
             return
-        message = f"""
-🔔 <b>NEW TOKEN PURCHASE NOTIFICATION</b>
-
-👤 <b>User:</b> {user_data['Name']} (ID: {user_id})
-📦 <b>Package:</b> {package_info.get('amount', 'Custom')} tokens
-💰 <b>Price:</b> ₵{package_info.get('price_cedis', 'N/A')} / ${package_info.get('price_usd', 'N/A')}
-💳 <b>Payment Method:</b> {payment_method}
-⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC
-
-📱 <b>User Contact:</b> @{user_data.get('Username', 'No username')}
-
-⚡ Use Admin Dashboard to approve purchase
-        """
+        message = (
+            f"🔔 <b>NEW TOKEN PURCHASE NOTIFICATION</b>\n\n"
+            f"👤 <b>User:</b> {user_data['Name']} (ID: {user_id})\n"
+            f"📦 <b>Package:</b> {package_info.get('amount', 'Custom')} tokens\n"
+            f"💰 <b>Price:</b> ₵{package_info.get('price_cedis', 'N/A')} / ${package_info.get('price_usd', 'N/A')}\n"
+            f"💳 <b>Payment Method:</b> {payment_method}\n"
+            f"⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+            f"📱 <b>User Contact:</b> @{user_data.get('Username', 'No username')}\n"
+            f"⚡ Use Admin Dashboard to approve purchase"
+        )
         for admin_id in ADMIN_CHAT_IDS:
-            try:
-                bot.send_message(admin_id, message)
-            except Exception as e:
-                logger.error(f"Failed to notify admin {admin_id}: {e}")
+            bot.send_message(admin_id, message)
     except Exception as e:
         logger.error(f"Error notifying admin: {e}")
 
-def log_token_transaction(user_id, transaction_type, amount, details, payment_method=None):
+def send_feedback_to_admin(user_id, feedback_text):
     try:
-        timestamp = datetime.now(timezone.utc).isoformat()
-        readable_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
-        log_entry = f"{readable_time} | {transaction_type} | User: {user_id} | Amount: {amount} | Details: {details}"
-        if payment_method:
-            log_entry += f" | Payment: {payment_method}"
-        logger.info(f"Token Transaction: {log_entry}")
-        if transaction_type in ["BUY", "REDEEM", "STREAK_BONUS", "DAILY_REWARD"]:
-            log_token_purchase(user_id, f"{transaction_type}_{details}_{readable_time}", amount, payment_method)
+        user_data = get_user_data(user_id)
+        if not user_data:
+            return
+        feedback_message = (
+            f"💬 <b>USER FEEDBACK RECEIVED</b>\n\n"
+            f"👤 <b>From:</b> {user_data['Name']} (ID: {user_id})\n"
+            f"📱 <b>Username:</b> @{user_data.get('Username', 'No username')}\n"
+            f"⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
+            f"📝 <b>Message:</b>\n{feedback_text}\n"
+            f"📊 <b>User Stats:</b>\n"
+            f"• Tokens: {user_data['Tokens']}\n"
+            f"• Points: {user_data['Points']}\n"
+            f"• Referrals: {int(user_data.get('ReferralEarnings', 0))}"
+        )
+        for admin_id in ADMIN_CHAT_IDS:
+            bot.send_message(admin_id, feedback_message)
     except Exception as e:
-        logger.error(f"Error logging token transaction: {e}")
+        logger.error(f"Error sending feedback to admin: {e}")
 
 def init_player_progress(user_id):
     if user_id not in player_progress:
@@ -547,6 +813,7 @@ def update_player_progress(user_id, is_correct):
         progress['questions_until_bonus'] -= 1
         if progress['questions_until_bonus'] == 0:
             progress['questions_until_bonus'] = 10
+            progress['current_streak'] = 0
             return True
     else:
         progress['current_streak'] = 0
@@ -587,92 +854,55 @@ def translate_text(text, lang_code):
         logger.error(f"Translation error: {e}")
         return text
 
-def send_feedback_to_admin(user_id, feedback_text):
-    try:
-        user_data = get_user_data(user_id)
-        if not user_data:
-            return
-        feedback_message = f"""
-💬 <b>USER FEEDBACK RECEIVED</b>
-
-👤 <b>From:</b> {user_data['Name']} (ID: {user_id})
-📱 <b>Username:</b> @{user_data.get('Username', 'No username')}
-⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC
-
-📝 <b>Message:</b>
-{feedback_text}
-
-📊 <b>User Stats:</b>
-• Tokens: {user_data['Tokens']}
-• Points: {user_data['Points']}
-• Referrals: {int(user_data.get('ReferralEarnings', 0))}
-        """
-        for admin_id in ADMIN_CHAT_IDS:
-            try:
-                bot.send_message(admin_id, feedback_message)
-            except Exception as e:
-                logger.error(f"Failed to send feedback to admin {admin_id}: {e}")
-    except Exception as e:
-        logger.error(f"Error sending feedback to admin: {e}")
-
 # --- Registration & MoMo ---
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     chat_id = message.chat.id
-    args = message.text.split()
-    referrer_id = None
-    if len(args) > 1 and args[1].startswith("REF"):
-        referrer_code = args[1]
-        referrer_id = find_user_by_referral_code(referrer_code)
-    
+
+    # Extract referral code from start command
+    referral_code = None
+    referrer_user = None
+    if message.text and len(message.text.split()) > 1:
+        referral_code = message.text.split()[1]
+        referrer_user = find_user_by_referral_code(referral_code)
+
     user = get_user_data(chat_id)
     if not user:
+        # If referrer_user is found, pass their UserID to register_user
+        referrer_id = referrer_user['UserID'] if referrer_user else None
         register_user(chat_id, message.from_user.first_name, message.from_user.username, referrer_id)
         user = get_user_data(chat_id)
-        update_user_tokens_points(chat_id, user['Tokens'] + 3, user['Points'])
-        if referrer_id:
-            reward_referrer(int(referrer_id), 2)
-            increment_referral_count(int(referrer_id), chat_id)
+        # Reward referrer if this is a new referral
+        if referrer_user and user:
+            reward_referrer(referrer_user['UserID'], 2)  # 2 tokens for referral
+            increment_referral_count(referrer_user['UserID'], chat_id)
+            logger.info(f"Referral reward: User {referrer_user['UserID']} got 2 tokens for referring {chat_id}")
+            bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}!")
+            bot.send_message(chat_id, f"✅ You joined with a referral code from {referrer_user['Name']}. They have been rewarded!")
     if not user.get("MoMoNumber"):
-        bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
+       
+       
         user_momo_pending[chat_id] = "awaiting_momo"
         return
-    motivation = random.choice(MOTIVATIONAL_MESSAGES)
-    bot.send_message(
-        chat_id,
-        WELCOME_MESSAGE.format(
-            name=user.get('Name', message.from_user.first_name),
-            about_us=ABOUT_US,
-            motivation=motivation
-        ),
-        reply_markup=create_main_menu(chat_id)
+
+    welcome_msg = WELCOME_MESSAGE.format(
+        name=user.get('Name', message.from_user.first_name),
+        about_us=ABOUT_US,
+        motivation=random.choice(MOTIVATIONAL_MESSAGES)
     )
+    bot.send_message(chat_id, welcome_msg, reply_markup=create_main_menu(chat_id))
 
 @bot.message_handler(func=lambda message: message.chat.id in user_momo_pending)
 def momo_number_handler(message):
     chat_id = message.chat.id
     if user_momo_pending[chat_id] == "awaiting_momo":
         momo_number = message.text.strip()
-        import re
-        if not re.match(r'^\+?\d{10,12}$', momo_number):
-            bot.send_message(chat_id, "❌ Invalid MoMo number. Please enter a valid 10-12 digit phone number.")
-            return
         update_user_momo(chat_id, momo_number)
-        bot.send_message(chat_id, f"✅ MoMo number {momo_number} recorded!")
         del user_momo_pending[chat_id]
-        motivation = random.choice(MOTIVATIONAL_MESSAGES)
-        bot.send_message(
-            chat_id,
-            WELCOME_MESSAGE.format(
-                name=message.from_user.first_name,
-                about_us=ABOUT_US,
-                motivation=motivation
-            ),
-            reply_markup=create_main_menu(chat_id)
-        )
+        bot.send_message(chat_id, "✅ MoMo number saved!", reply_markup=create_main_menu(chat_id))
 
 # --- Quiz Mode Selection ---
-@bot.message_handler(func=lambda message: message.text == "🎮 General Quiz")
+@bot.message_handler(func=lambda message: message.text == "🎮 Start Quiz")
 def general_quiz_handler(message):
     chat_id = message.chat.id
     user_quiz_mode[chat_id] = "general"
@@ -694,6 +924,10 @@ def zone_selection_handler(message):
 def language_selection_handler(message):
     chat_id = message.chat.id
     user_selected_language[chat_id] = message.text
+    if chat_id not in user_selected_zone or user_selected_zone[chat_id] not in ZONE_QUIZZES:
+        send_zone_menu(chat_id)
+        bot.send_message(chat_id, "Please select a zone first.")
+        return
     start_new_quiz(chat_id, "zone")
 
 # --- Unified Quiz Logic ---
@@ -702,7 +936,7 @@ def start_new_quiz(chat_id, mode):
     if not user:
         bot.send_message(chat_id, "Please /start first.")
         return
-    if user['Tokens'] <= 0:
+    if float(user['Tokens']) <= 0:
         bot.send_message(chat_id, "⚠️ You don't have any tokens! Use '💰 Buy Tokens' to continue playing.")
         return
     if chat_id in paused_games:
@@ -713,20 +947,18 @@ def start_new_quiz(chat_id, mode):
         )
         bot.send_message(chat_id, "⏸️ You have a paused game. Would you like to resume or start a new one?", reply_markup=markup)
         return
-    quiz = None
-    if mode == "general":
-        quiz = get_random_general_quiz(chat_id)
-    elif mode == "zone":
-        zone = user_selected_zone.get(chat_id, "West Africa")
-        quiz = get_random_zone_quiz(chat_id, zone)
+    zone = user_selected_zone.get(chat_id, "West Africa")
+    if zone not in ZONE_QUIZZES:
+        zone = "West Africa"
+    quiz = get_random_general_quiz(chat_id) if mode == "general" else get_random_zone_quiz(chat_id, zone)
     if not quiz:
         bot.send_message(chat_id, "❌ Error loading quiz. Please try again.")
         return
     lang = user_selected_language.get(chat_id, "English")
     lang_code = {"English": "en", "French": "fr", "Swahili": "sw", "Arabic": "ar"}[lang]
-    question = translate_text(quiz['q'], lang_code)
-    choices = [translate_text(c, lang_code) for c in quiz['choices']]
-    correct = translate_text(quiz['a'], lang_code)
+    question = translation_service.translate_text(quiz['q'], lang_code)
+    choices = [translation_service.translate_text(c, lang_code) for c in quiz['choices']]
+    correct = translation_service.translate_text(quiz['a'], lang_code)
     current_question[chat_id] = {
         'correct': correct,
         'question': question,
@@ -738,45 +970,98 @@ def start_new_quiz(chat_id, mode):
     answer_markup = InlineKeyboardMarkup()
     for choice in choices:
         answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
-    answer_markup.add(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"))
-    bot.send_message(chat_id, f"🧠 <b>{'General' if mode == 'general' else user_selected_zone[chat_id]} Quiz:</b>\n{question}", reply_markup=answer_markup)
+    answer_markup.add(
+        InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"),
+        InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")
+    )
+    answer_markup.add(InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main"))
+    zone_name = user_selected_zone.get(chat_id, "General")
+    bot.send_message(chat_id, f"🧠 <b>{'General' if mode == 'general' else zone_name} Quiz:</b>\n{question}", reply_markup=answer_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("answer:"))
 def answer_handler(call):
     chat_id = call.message.chat.id
     user = get_user_data(chat_id)
     if not user or chat_id not in current_question:
-        bot.answer_callback_query(call.id, "❌ Invalid question!")
+        bot.answer_callback_query(call.id, "No active question.")
         return
     answer = call.data.split("answer:")[1]
     correct = current_question[chat_id]['correct']
-    tokens = user['Tokens']
-    points = user['Points']
+    tokens = float(user['Tokens'])
+    points = float(user['Points'])
     bonus_earned = update_player_progress(chat_id, answer == correct)
     if answer == correct:
         points += 10
         tokens -= 1
-        if bonus_earned:
-            tokens += 3
-            log_token_transaction(chat_id, "STREAK_BONUS", 3, "10_correct_answers")
         update_user_tokens_points(chat_id, tokens, points)
         bot.answer_callback_query(call.id, "✅ Correct! +10 points")
-        message = f"🎉 Correct answer! You earned <b>10 points</b>!"
         if bonus_earned:
-            message += f"\n\n🔥 <b>STREAK BONUS!</b>\n✅ +3 tokens for 10 correct answers in a row!\n💰 Total tokens: {tokens}"
-        bot.send_message(chat_id, message)
+            tokens += 3
+            update_user_tokens_points(chat_id, tokens, points)
+            bot.send_message(chat_id, "🔥 Streak bonus! +3 tokens")
     else:
         tokens -= 1
         update_user_tokens_points(chat_id, tokens, points)
         bot.answer_callback_query(call.id, "❌ Wrong answer!")
-        bot.send_message(chat_id, f"❌ Wrong! The correct answer was: <b>{correct}</b>")
+        bot.send_message(chat_id, f"❌ Wrong! The correct answer was: <b>{current_question[chat_id]['original_answer']}</b>")
     bot.send_message(chat_id, f"💰 Balance: {tokens} tokens | {points} points\n🔥 Current Streak: {player_progress[chat_id]['current_streak']}")
+    mode = current_question[chat_id]['mode']
     del current_question[chat_id]
     if tokens > 0:
-        time.sleep(2)
-        start_new_quiz(chat_id, user_quiz_mode.get(chat_id, "general"))
+        start_new_quiz(chat_id, mode)
     else:
         bot.send_message(chat_id, "🔚 You've run out of tokens. Use '💰 Buy Tokens' to continue playing!", reply_markup=create_main_menu(chat_id))
+
+@bot.callback_query_handler(func=lambda call: call.data == "skip_question")
+def skip_question_handler(call):
+    chat_id = call.message.chat.id
+    if chat_id in current_question and not current_question[chat_id]['skipped']:
+        current_question[chat_id]['skipped'] = True
+        bot.send_message(chat_id, "⏭️ Question skipped! No tokens deducted.")
+        mode = current_question[chat_id]['mode']
+        del current_question[chat_id]
+        start_new_quiz(chat_id, mode)
+    else:
+        bot.send_message(chat_id, "❌ You can only skip once per question.")
+
+@bot.callback_query_handler(func=lambda call: call.data == "pause_game")
+def pause_game_handler(call):
+    chat_id = call.message.chat.id
+    if chat_id in current_question:
+        paused_games[chat_id] = current_question[chat_id]
+        del current_question[chat_id]
+        bot.send_message(chat_id, "⏸️ Game paused. Use '🎮 Start Quiz' to resume.")
+    else:
+        bot.send_message(chat_id, "❌ No active game to pause.")
+
+@bot.callback_query_handler(func=lambda call: call.data == "resume_game")
+def resume_game_handler(call):
+    chat_id = call.message.chat.id
+    if chat_id in paused_games:
+        current_question[chat_id] = paused_games[chat_id]
+        del paused_games[chat_id]
+        quiz = current_question[chat_id]
+        answer_markup = InlineKeyboardMarkup()
+        for choice in quiz['choices']:
+            answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
+        answer_markup.add(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"))
+        bot.send_message(chat_id, f"🧠 <b>Quiz:</b>\n{quiz['question']}", reply_markup=answer_markup)
+    else:
+        bot.send_message(chat_id, "❌ No paused game found.")
+
+@bot.callback_query_handler(func=lambda call: call.data == "new_game")
+def new_game_handler(call):
+    chat_id = call.message.chat.id
+    if chat_id in paused_games:
+        del paused_games[chat_id]
+    start_new_quiz(chat_id, user_quiz_mode.get(chat_id, "general"))
+
+@bot.callback_query_handler(func=lambda call: call.data == "return_main")
+def return_main_handler(call):
+    chat_id = call.message.chat.id
+    bot.send_message(chat_id, "Back to main menu.", reply_markup=create_main_menu(chat_id))
+    if chat_id in current_question:
+        del current_question[chat_id]
 
 # --- Token Purchase Handler ---
 @bot.message_handler(func=lambda message: message.text == "💰 Buy Tokens")
@@ -807,7 +1092,12 @@ def buy_token_callback(call):
     log_token_purchase(chat_id, transaction_id, amount, "MTN MoMo or USDT")
     pending_token_purchases[chat_id] = {"amount": amount, "price_cedis": price, "price_usd": TOKEN_PRICING[package_label]['price_usd'], "package": package_label, "transaction_id": transaction_id}
     notify_admin_token_purchase(chat_id, pending_token_purchases[chat_id], "MTN MoMo or USDT")
-    bot.send_message(chat_id, f"To buy {amount} tokens for GHS {price}, send payment via MTN MoMo or USDT. Your Transaction ID is `{transaction_id}`. An admin will approve it shortly.", parse_mode="Markdown")
+    bot.send_message(
+        chat_id,
+        f"To buy {amount} tokens for GHS {price}, send payment via MTN MoMo or USDT. Your Transaction ID is `{transaction_id}`. An admin will approve it shortly.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("📢 Notify Admin", callback_data="notify_admin_purchase"))
+    )
     bot.answer_callback_query(call.id)
 
 @bot.message_handler(func=lambda message: message.chat.id in custom_token_requests and custom_token_requests[message.chat.id].get('waiting_for_amount'))
@@ -828,12 +1118,16 @@ def custom_token_handler(message):
 @bot.message_handler(func=lambda message: message.text == "🎁 Redeem Rewards")
 def redeem_rewards_handler(message):
     chat_id = message.chat.id
+   
+   
+
+   
+   
     user = get_user_data(chat_id)
     points = user.get('Points', 0)
     markup = InlineKeyboardMarkup()
     for reward, info in REDEEM_OPTIONS.items():
-        if points >= info['points']:
-            markup.add(InlineKeyboardButton(f"{reward} ({info['points']} pts)", callback_data=f"redeem:{reward}"))
+        markup.add(InlineKeyboardButton(f"{reward} ({info['points']} pts)", callback_data=f"redeem:{reward}"))
     bot.send_message(chat_id, f"🎁 You have {points} points. Choose a reward to redeem:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("redeem:"))
@@ -850,22 +1144,8 @@ def redeem_callback_handler(call):
         return
     tokens_to_add = reward.get('amount', 0)
     update_user_tokens_points(chat_id, user['Tokens'] + tokens_to_add, user['Points'] - reward['points'])
-    log_point_redemption(chat_id, label)
     bot.send_message(chat_id, f"🎉 You redeemed: {reward['reward']}!\nOur team will contact you for delivery if applicable.")
     bot.answer_callback_query(call.id)
-
-# --- Skip and Pause Handlers ---
-@bot.callback_query_handler(func=lambda call: call.data == "skip_question")
-def skip_question_handler(call):
-    chat_id = call.message.chat.id
-    if chat_id in current_question and not current_question[chat_id]['skipped']:
-        current_question[chat_id]['skipped'] = True
-        bot.send_message(chat_id, "⏭️ Question skipped! No tokens deducted.")
-        mode = current_question[chat_id]['mode']
-        del current_question[chat_id]
-        start_new_quiz(chat_id, mode)
-    else:
-        bot.send_message(chat_id, "❌ You can only skip once per question.")
 
 # --- Daily Reward Handler ---
 @bot.message_handler(func=lambda message: message.text == "🎁 Daily Reward")
@@ -878,7 +1158,6 @@ def daily_reward_handler(message):
     rewarded, new_tokens = check_and_give_daily_reward(chat_id)
     if rewarded:
         bot.send_message(chat_id, f"🎉 You claimed your daily reward! +1 token\n💰 Total tokens: {new_tokens}")
-        log_token_transaction(chat_id, "DAILY_REWARD", 1, "Daily_Claim")
     else:
         bot.send_message(chat_id, "⏳ You've already claimed your daily reward today. Come back tomorrow!")
     bot.send_message(chat_id, "Back to main menu:", reply_markup=create_main_menu(chat_id))
@@ -905,6 +1184,7 @@ def stats_handler(message):
 🏆 <b>Best Streak:</b> {progress['best_streak']}
 ✅ <b>Total Correct:</b> {progress['total_correct']}
 ❓ <b>Total Questions:</b> {progress['total_questions']}
+
 ⏭️ <b>Skips Used:</b> {progress['skips_used']}
 ⏸️ <b>Games Paused:</b> {progress['games_paused']}
     """
@@ -924,14 +1204,14 @@ def progress_handler(message):
 🏆 <b>Best Streak:</b> {progress['best_streak']} correct
 ✅ <b>Accuracy:</b> {accuracy:.2f}%
 ❓ <b>Questions Answered:</b> {progress['total_questions']}
-✅ <b>Correct Answers:</b> {progress['total_correct']}
-⏭️ <b>Questions Until Bonus:</b> {progress['questions_until_bonus']}
+⏭️ <b>Skips Used:</b> {progress['skips_used']}
+⏸️ <b>Games Paused:</b> {progress['games_paused']}
     """
     bot.send_message(chat_id, progress_message, reply_markup=create_main_menu(chat_id))
 
-# --- Referrals Handler ---
-@bot.message_handler(func=lambda message: message.text == "👥 Referrals")
-def referrals_handler(message):
+# --- Referral Handler ---
+@bot.message_handler(func=lambda message: message.text == "👥 Referral")
+def referral_handler(message):
     chat_id = message.chat.id
     user = get_user_data(chat_id)
     if not user:
@@ -939,9 +1219,7 @@ def referrals_handler(message):
         return
     referral_code = user.get("referral_code", f"REF{str(chat_id)[-6:]}")
     referral_message = f"""
-👥 <b>Referrals</b>
-
-Invite friends to Learn4Cash and earn <b>2 tokens</b> per referral!
+👥 <b>Referral</b> Invite friends to Learn4Cash and earn <b>2 tokens</b> per referral!
 📲 Your referral code: <b>{referral_code}</b>
 🔗 Share this link: <code>https://t.me/Learn4CashBot?start={referral_code}</code>
 👥 Total Referrals: <b>{int(user.get('ReferralEarnings', 0))}</b>
@@ -1002,28 +1280,13 @@ def help_handler(message):
     """
     bot.send_message(chat_id, help_message, reply_markup=create_main_menu(chat_id))
 
-# --- Feedback Handler ---
-@bot.message_handler(func=lambda message: message.text == "💬 Send Feedback")
-def feedback_handler(message):
-    chat_id = message.chat.id
-    user_feedback_mode[chat_id] = True
-    bot.send_message(chat_id, "📝 Please type your feedback or suggestions:", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("🔙 Cancel")))
-
-@bot.message_handler(func=lambda message: message.chat.id in user_feedback_mode and user_feedback_mode[message.chat.id])
-def feedback_input_handler(message):
-    chat_id = message.chat.id
-    if message.text == "🔙 Cancel":
-        del user_feedback_mode[chat_id]
-        bot.send_message(chat_id, "Feedback cancelled.", reply_markup=create_main_menu(chat_id))
-        return
-    send_feedback_to_admin(chat_id, message.text)
-    del user_feedback_mode[chat_id]
-    bot.send_message(chat_id, "✅ Thank you for your feedback! Our team will review it.", reply_markup=create_main_menu(chat_id))
-
 # --- Admin Menu Handler ---
-@bot.message_handler(func=lambda message: message.text == "🔧 Admin Menu" and is_admin(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == "🔧 Admin Menu")
 def admin_menu_handler(message):
     chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "Unauthorized.")
+        return
     bot.send_message(chat_id, "🔧 Admin Menu", reply_markup=create_admin_menu())
 
 # --- Admin Dashboard Handler ---
@@ -1152,7 +1415,7 @@ def process_broadcast_message(message):
     sheet_manager = get_sheet_manager()
     users = sheet_manager.get_all_users()
     for user in users:
-        user_id = user['user_id']
+        user_id = user['UserID']
         try:
             bot.send_message(user_id, f"📢 <b>Announcement</b>\n\n{broadcast_text}")
         except Exception as e:
@@ -1201,43 +1464,76 @@ def back_to_user_menu_handler(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, "Returning to user menu...", reply_markup=create_main_menu(chat_id))
 
-# --- Pause and Resume Handlers ---
-@bot.callback_query_handler(func=lambda call: call.data == "pause_game")
-def pause_game_handler(call):
-    chat_id = call.message.chat.id
-    if chat_id in current_question:
-        paused_games[chat_id] = current_question[chat_id]
-        init_player_progress(chat_id)
-        player_progress[chat_id]['games_paused'] += 1
-        del current_question[chat_id]
-        bot.send_message(chat_id, "⏸️ Game paused. Use 'General Quiz' or 'Zone Quiz' to resume.", reply_markup=create_main_menu(chat_id))
-        bot.answer_callback_query(call.id)
+# --- Current Affairs Handler ---
+def fetch_current_affairs():
+    try:
+        url = "https://newsdata.io/api/1/news?apikey=YOUR_API_KEY&country=ng,gh,za,eg,ke&category=business,world"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            articles = data.get("results", [])[:5]
+            news = "\n\n".join([f"📰 <b>{a['title']}</b>\n{a['link']}" for a in articles])
+            return news or "No current news found."
+        return "Could not fetch news at this time."
+    except Exception as e:
+        logger.error(f"Current affairs fetch error: {e}")
+        return "Error fetching news."
 
-@bot.callback_query_handler(func=lambda call: call.data == "resume_game")
-def resume_game_handler(call):
-    chat_id = call.message.chat.id
-    if chat_id in paused_games:
-        current_question[chat_id] = paused_games[chat_id]
-        question = current_question[chat_id]['question']
-        choices = current_question[chat_id]['choices']
-        answer_markup = InlineKeyboardMarkup()
-        for choice in choices:
-            answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
-        answer_markup.add(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"))
-        bot.send_message(chat_id, f"▶️ Resuming game:\n🧠 <b>{current_question[chat_id]['mode'].title()} Quiz:</b>\n{question}", reply_markup=answer_markup)
-        del paused_games[chat_id]
-        bot.answer_callback_query(call.id)
-    else:
-        bot.send_message(chat_id, "No paused game found.", reply_markup=create_main_menu(chat_id))
-        bot.answer_callback_query(call.id)
+@bot.message_handler(func=lambda message: message.text == "🌐 Current Affairs")
+def current_affairs_handler(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Fetching latest African and global business news...")
+    news = fetch_current_affairs()
+    bot.send_message(chat_id, news, parse_mode="HTML", disable_web_page_preview=True)
 
-@bot.callback_query_handler(func=lambda call: call.data == "new_game")
-def new_game_handler(call):
+# --- Country Bio Handler ---
+@bot.callback_query_handler(func=lambda call: call.data.startswith("countrybio:"))
+def country_bio_handler(call):
     chat_id = call.message.chat.id
-    if chat_id in paused_games:
-        del paused_games[chat_id]
-    mode = user_quiz_mode.get(chat_id, "general")
-    start_new_quiz(chat_id, mode)
+    country_name = call.data.split("countrybio:")[1]
+    country = next((c for c in AFRICAN_COUNTRIES if c["name"] == country_name), None)
+    if not country:
+        bot.answer_callback_query(call.id, "Country not found.")
+        return
+    bio = country.get('bio', 'No bio available.')
+    website = country.get('website', '#')
+    text = f"🌍 <b>{country['name']}</b>\n\n{bio}\n\n🔗 <a href='{website}'>Official Website</a>"
+    bot.send_message(chat_id, text, parse_mode="HTML", disable_web_page_preview=False)
+    bot.answer_callback_query(call.id)
+
+# --- Pagination for Country List ---
+COUNTRIES_PER_PAGE = 8  # You can adjust this number
+
+def get_country_page_markup(page=0):
+    start = page * COUNTRIES_PER_PAGE
+    end = start + COUNTRIES_PER_PAGE
+    markup = InlineKeyboardMarkup()
+    for country in AFRICAN_COUNTRIES[start:end]:
+        markup.add(InlineKeyboardButton(country["name"], callback_data=f"countrybio:{country['name']}"))
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"countrylist:prev:{page-1}"))
+    if end < len(AFRICAN_COUNTRIES):
+        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"countrylist:next:{page+1}"))
+    if nav_buttons:
+        markup.add(*nav_buttons)
+    return markup
+
+@bot.message_handler(func=lambda message: message.text == "🌍 African Countries")
+def list_african_countries_handler(message):
+    chat_id = message.chat.id
+    country_list_page[chat_id] = 0
+    markup = get_country_page_markup(0)
+    bot.send_message(chat_id, "🌍 <b>Select an African country to learn more:</b>", reply_markup=markup, parse_mode="HTML")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("countrylist:"))
+def countrylist_pagination_handler(call):
+    chat_id = call.message.chat.id
+    _, direction, page = call.data.split(":")
+    page = int(page)
+    country_list_page[chat_id] = page
+    markup = get_country_page_markup(page)
+    bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=markup)
     bot.answer_callback_query(call.id)
 
 # --- Bot Polling ---
@@ -1265,6 +1561,14 @@ def run_scheduler():
 
 if __name__ == "__main__":
     threading.Thread(target=run_scheduler, daemon=True).start()
+    
+    # Delete webhook before starting polling to prevent 409 conflict
+    try:
+        bot.delete_webhook()
+        logger.info("Webhook deleted successfully. Starting polling...")
+    except Exception as e:
+        logger.warning(f"Could not delete webhook: {e}")
+    
     retry_count = 0
     max_retries = 5
     while retry_count < max_retries:
@@ -1283,3 +1587,70 @@ if __name__ == "__main__":
             time.sleep(10)
     if retry_count >= max_retries:
         logger.error("Max retries reached. Bot polling stopped.")
+
+marketplace_listings = []  # Each listing: dict with 'user_id', 'username', 'item', 'price', 'desc', 'contact'
+
+# --- Marketplace Handlers ---
+@bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
+def marketplace_menu_handler(message):
+    chat_id = message.chat.id
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton("➕ List Item"), KeyboardButton("🔍 Browse Marketplace"))
+    markup.add(KeyboardButton("🏠 Return to Main Menu"))
+    bot.send_message(chat_id, "🛒 Welcome to the Marketplace!\nChoose an option:", reply_markup=markup)
+
+@bot.message_handler(func=lambda message: message.text == "➕ List Item")
+def list_item_handler(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Please provide the item details in the format:\n\nItem Name\nPrice (in tokens)\nDescription\nContact Info")
+    bot.register_next_step_handler(message, process_item_listing)
+
+def process_item_listing(message):
+    chat_id = message.chat.id
+    details = message.text.split("\n")
+    if len(details) < 4:
+        bot.send_message(chat_id, "Invalid format. Please provide all details: Item Name, Price, Description, and Contact Info.")
+        return
+    item_name, price, description, contact_info = details
+    user = get_user_data(chat_id)
+    if not user:
+        bot.send_message(chat_id, "Please /start first.")
+        return
+    listing = {
+        'user_id': chat_id,
+        'username': user.get('Username', 'None'),
+        'item': item_name,
+        'price': price,
+        'desc': description,
+        'contact': contact_info
+    }
+    marketplace_listings.append(listing)
+    bot.send_message(chat_id, f"✅ Item listed successfully!\n\n{format_listing(listing)}", reply_markup=create_main_menu(chat_id))
+
+def format_listing(listing):
+    contact = f"@{listing['username']}" if listing['username'] and listing['username'] != 'None' else listing['contact']
+    return f"🛒 <b>{listing['item']}</b>\n💰 Price: {listing['price']} tokens\n📜 Description: {listing['desc']}\n📞 Contact: {contact}"
+
+@bot.message_handler(func=lambda message: message.text == "🔍 Browse Marketplace")
+def browse_marketplace_handler(message):
+    chat_id = message.chat.id
+    if not marketplace_listings:
+        bot.send_message(chat_id, "No listings yet. Be the first to list an item!", reply_markup=create_main_menu(chat_id))
+        return
+    for listing in marketplace_listings[-10:][::-1]:  # Show last 10 listings
+        text = (
+            f"🛒 <b>{listing['item']}</b>\n"
+            f"💬 {listing['desc']}\n"
+            f"💰 <b>Price:</b> GHS {listing['price']}\n"
+            f"📱 <b>Contact:</b> @{listing['username'] or listing['user_id']}"
+        )
+        bot.send_message(chat_id, text, parse_mode="HTML")
+    bot.send_message(chat_id, "End of listings.", reply_markup=create_main_menu(chat_id))
+
+@bot.callback_query_handler(func=lambda call: call.data == "notify_admin_purchase")
+def notify_admin_purchase_handler(call):
+    chat_id = call.message.chat.id
+    user = get_user_data(chat_id)
+    for admin_id in ADMIN_CHAT_IDS:
+        bot.send_message(admin_id, f"User @{user.get('Username', chat_id)} has requested admin attention for a token purchase.")
+    bot.send_message(chat_id, "✅ Admin has been notified. Please wait for approval.")
