@@ -45,9 +45,10 @@ ADMIN_CHAT_IDS = [
 
 API_KEY = os.getenv("TELEGRAM_API_KEY") or "YOUR_FALLBACK_API_KEY"
 bot = TeleBot(API_KEY, parse_mode='HTML')
+ADMIN_CHAT_IDS = [2145372547]
+translator = Translator()
 
-
-USD_TO_CEDIS_RATE = exchange_rate_service.get_rate()
+USD_TO_CEDIS_RATE = 11.8
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
 
 TOKEN_PRICING = {
@@ -880,8 +881,7 @@ def start_handler(message):
             bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}!")
             bot.send_message(chat_id, f"✅ You joined with a referral code from {referrer_user['Name']}. They have been rewarded!")
     if not user.get("MoMoNumber"):
-       
-       
+        bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
         user_momo_pending[chat_id] = "awaiting_momo"
         return
 
