@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
-from sheet_manager import (
+from sheet_manager_fix import (
     register_user,
     get_user_data,
     update_user_tokens_points,

@@ -30,7 +30,11 @@ class UIEnhancer:
             KeyboardButton("👥 Referrals"),
             KeyboardButton("🏆 Leaderboard"),
             KeyboardButton("ℹ️ Help"),
-            KeyboardButton("💬 Feedback")
+            KeyboardButton("💬 Feedback"),
+            KeyboardButton("🌐 Current Affairs"),
+            KeyboardButton("🎁 Tiered Rewards"),
+            KeyboardButton("🌍 African Countries"),
+            KeyboardButton("🛒 Marketplace")
         ]
         
         if is_admin:
@@ -106,5 +110,30 @@ class UIEnhancer:
     def create_return_button(self):
         """Create return to main menu button"""
         return InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main")
+        
+    def create_crypto_payment_menu(self):
+        """Create crypto payment menu"""
+        markup = InlineKeyboardMarkup(row_width=1)
+        
+        crypto_options = [
+            ("Bitcoin (BTC)", "btc"),
+            ("Ethereum (ETH)", "eth"),
+            ("USDT (TRC20)", "usdt_trc20"),
+            ("USDT (ERC20)", "usdt_erc20"),
+            ("BNB (BSC)", "bnb"),
+            ("Solana (SOL)", "sol")
+        ]
+        
+        for name, crypto in crypto_options:
+            markup.add(
+                InlineKeyboardButton(
+                    f"💎 {name}",
+                    callback_data=f"crypto:{crypto}"
+                )
+            )
+        return markup
+        
+    def create_notification_button(self, text, callback_data, emoji="🔔"):
+        """Create notification button"""
+        return InlineKeyboardButton(f"{emoji} {text}", callback_data=callback_data)
 
-ui_enhancer = UIEnhancer()

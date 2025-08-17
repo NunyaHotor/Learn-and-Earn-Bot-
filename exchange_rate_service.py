@@ -70,6 +70,7 @@ class ExchangeRateService:
         except:
             return 1.0
 
+# Create the service instance
 exchange_rate_service = ExchangeRateService()
 
 # Background thread for rate updates
@@ -80,3 +81,7 @@ def start_rate_updater():
             time.sleep(3600)  # Update every hour
     thread = threading.Thread(target=update_rates, daemon=True)
     thread.start()
+
+# Initialize the rate
+USD_TO_CEDIS_RATE = exchange_rate_service.get_rate()
+start_rate_updater()
