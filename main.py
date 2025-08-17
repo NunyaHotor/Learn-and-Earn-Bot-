@@ -377,18 +377,276 @@ ZONE_QUIZZES = {
 }
 
 AFRICAN_COUNTRIES = [
-    {"name": "Algeria"}, {"name": "Angola"}, {"name": "Benin"}, {"name": "Botswana"}, {"name": "Burkina Faso"},
-    {"name": "Burundi"}, {"name": "Cabo Verde"}, {"name": "Cameroon"}, {"name": "Central African Republic"},
-    {"name": "Chad"}, {"name": "Comoros"}, {"name": "Congo"}, {"name": "Democratic Republic of the Congo"},
-    {"name": "Djibouti"}, {"name": "Egypt"}, {"name": "Equatorial Guinea"}, {"name": "Eritrea"}, {"name": "Eswatini"},
-    {"name": "Ethiopia"}, {"name": "Gabon"}, {"name": "Gambia"}, {"name": "Ghana"}, {"name": "Guinea"},
-    {"name": "Guinea-Bissau"}, {"name": "Ivory Coast"}, {"name": "Kenya"}, {"name": "Lesotho"}, {"name": "Liberia"},
-    {"name": "Libya"}, {"name": "Madagascar"}, {"name": "Malawi"}, {"name": "Mali"}, {"name": "Mauritania"},
-    {"name": "Mauritius"}, {"name": "Morocco"}, {"name": "Mozambique"}, {"name": "Namibia"}, {"name": "Niger"},
-    {"name": "Nigeria"}, {"name": "Rwanda"}, {"name": "Sao Tome and Principe"}, {"name": "Senegal"},
-    {"name": "Seychelles"}, {"name": "Sierra Leone"}, {"name": "Somalia"}, {"name": "South Africa"},
-    {"name": "South Sudan"}, {"name": "Sudan"}, {"name": "Tanzania"}, {"name": "Togo"}, {"name": "Tunisia"},
-    {"name": "Uganda"}, {"name": "Zambia"}, {"name": "Zimbabwe"}
+    {
+        "name": "Algeria",
+        "bio": "Algeria is the largest country in Africa, located in North Africa. It is known for its vast Sahara desert and rich oil and gas resources. Capital: Algiers.",
+        "website": "https://www.el-mouradia.dz/"
+    },
+    {
+        "name": "Angola",
+        "bio": "Angola is a Southern African nation with a diverse landscape and a history of Portuguese colonization. Capital: Luanda.",
+        "website": "https://www.governo.gov.ao/"
+    },
+    {
+        "name": "Benin",
+        "bio": "Benin is a West African country known for its rich history as the birthplace of the Vodun (Voodoo) religion and the Dahomey Kingdom. Capital: Porto-Novo.",
+        "website": "https://www.gouv.bj/"
+    },
+    {
+        "name": "Botswana",
+        "bio": "Botswana is a landlocked country in Southern Africa, famous for its stable democracy and the Okavango Delta. Capital: Gaborone.",
+        "website": "https://www.gov.bw/"
+    },
+    {
+        "name": "Burkina Faso",
+        "bio": "Burkina Faso is a landlocked country in West Africa, known for its vibrant culture and music. Capital: Ouagadougou.",
+        "website": "https://www.gouvernement.gov.bf/"
+    },
+    {
+        "name": "Burundi",
+        "bio": "Burundi is a small, landlocked country in East Africa, bordered by Rwanda, Tanzania, and the Democratic Republic of the Congo. Capital: Gitega.",
+        "website": "https://www.presidence.gov.bi/"
+    },
+    {
+        "name": "Cabo Verde",
+        "bio": "Cabo Verde (Cape Verde) is an island country in the Atlantic Ocean off the coast of West Africa, known for its Creole Portuguese-African culture. Capital: Praia.",
+        "website": "https://www.governo.cv/"
+    },
+    {
+        "name": "Cameroon",
+        "bio": "Cameroon is a Central African country with diverse geography and cultures, often called 'Africa in miniature.' Capital: Yaoundé.",
+        "website": "https://www.spm.gov.cm/"
+    },
+    {
+        "name": "Central African Republic",
+        "bio": "The Central African Republic is a landlocked country in Central Africa, rich in natural resources but affected by conflict. Capital: Bangui.",
+        "website": "https://www.presidence.cf/"
+    },
+    {
+        "name": "Chad",
+        "bio": "Chad is a landlocked country in north-central Africa, known for Lake Chad and the Sahara Desert. Capital: N'Djamena.",
+        "website": "https://www.presidence.td/"
+    },
+    {
+        "name": "Comoros",
+        "bio": "Comoros is an island nation in the Indian Ocean, located between Madagascar and Mozambique. Capital: Moroni.",
+        "website": "https://www.beit-salam.km/"
+    },
+    {
+        "name": "Congo",
+        "bio": "The Republic of the Congo is located in Central Africa, known for its rainforests and the Congo River. Capital: Brazzaville.",
+        "website": "https://www.gouvernement.cg/"
+    },
+    {
+        "name": "Democratic Republic of the Congo",
+        "bio": "The DRC is Africa's second-largest country, rich in minerals and home to the Congo Rainforest. Capital: Kinshasa.",
+        "website": "https://www.presidence.cd/"
+    },
+    {
+        "name": "Djibouti",
+        "bio": "Djibouti is a small country in the Horn of Africa, strategically located on the Red Sea. Capital: Djibouti.",
+        "website": "https://www.presidence.dj/"
+    },
+    {
+        "name": "Egypt",
+        "bio": "Egypt is a transcontinental country linking northeast Africa with the Middle East, famous for its ancient civilization and pyramids. Capital: Cairo.",
+        "website": "https://www.egypt.gov.eg/"
+    },
+    {
+        "name": "Equatorial Guinea",
+        "bio": "Equatorial Guinea is a small Central African country with significant oil reserves. Capital: Malabo.",
+        "website": "https://www.guineaecuatorialpress.com/"
+    },
+    {
+        "name": "Eritrea",
+        "bio": "Eritrea is a country in the Horn of Africa, known for its Red Sea coastline and Italian colonial heritage. Capital: Asmara.",
+        "website": "https://www.shabait.com/"
+    },
+    {
+        "name": "Eswatini",
+        "bio": "Eswatini (formerly Swaziland) is a small, landlocked monarchy in Southern Africa. Capital: Mbabane.",
+        "website": "https://www.gov.sz/"
+    },
+    {
+        "name": "Ethiopia",
+        "bio": "Ethiopia is a landlocked country in the Horn of Africa, known for its ancient history and diverse cultures. Capital: Addis Ababa.",
+        "website": "https://www.ethiopia.gov.et/"
+    },
+    {
+        "name": "Gabon",
+        "bio": "Gabon is a Central African country with significant oil reserves and rainforests. Capital: Libreville.",
+        "website": "https://www.gouvernement.ga/"
+    },
+    {
+        "name": "Gambia",
+        "bio": "The Gambia is the smallest country within mainland Africa, known for its river and beaches. Capital: Banjul.",
+        "website": "https://www.gov.gm/"
+    },
+    {
+        "name": "Ghana",
+        "bio": "Ghana is a West African country known for its gold, cocoa, and vibrant culture. Capital: Accra.",
+        "website": "https://www.ghana.gov.gh/"
+    },
+    {
+        "name": "Guinea",
+        "bio": "Guinea is a West African country rich in minerals, especially bauxite. Capital: Conakry.",
+        "website": "https://www.gouvernement.gov.gn/"
+    },
+    {
+        "name": "Guinea-Bissau",
+        "bio": "Guinea-Bissau is a small West African country with a history of Portuguese colonization. Capital: Bissau.",
+        "website": "https://www.governo.gw/"
+    },
+    {
+        "name": "Ivory Coast",
+        "bio": "Ivory Coast (Côte d'Ivoire) is a West African country, the world's largest cocoa producer. Capital: Yamoussoukro.",
+        "website": "https://www.gouv.ci/"
+    },
+    {
+        "name": "Kenya",
+        "bio": "Kenya is an East African country known for its savannahs, wildlife, and the Great Rift Valley. Capital: Nairobi.",
+        "website": "https://www.mygov.go.ke/"
+    },
+    {
+        "name": "Lesotho",
+        "bio": "Lesotho is a high-altitude, landlocked kingdom encircled by South Africa. Capital: Maseru.",
+        "website": "https://www.gov.ls/"
+    },
+    {
+        "name": "Liberia",
+        "bio": "Liberia is a West African country founded by freed American slaves. Capital: Monrovia.",
+        "website": "https://www.emansion.gov.lr/"
+    },
+    {
+        "name": "Libya",
+        "bio": "Libya is a North African country with a Mediterranean coastline and vast desert interior. Capital: Tripoli.",
+        "website": "https://www.pm.gov.ly/"
+    },
+    {
+        "name": "Madagascar",
+        "bio": "Madagascar is an island nation off the southeast coast of Africa, known for its unique wildlife. Capital: Antananarivo.",
+        "website": "https://www.presidence.gov.mg/"
+    },
+    {
+        "name": "Malawi",
+        "bio": "Malawi is a landlocked country in southeastern Africa, known for Lake Malawi. Capital: Lilongwe.",
+        "website": "https://www.malawi.gov.mw/"
+    },
+    {
+        "name": "Mali",
+        "bio": "Mali is a landlocked country in West Africa, home to the ancient city of Timbuktu. Capital: Bamako.",
+        "website": "https://www.gouv.ml/"
+    },
+    {
+        "name": "Mauritania",
+        "bio": "Mauritania is a country in Northwest Africa, much of it covered by the Sahara Desert. Capital: Nouakchott.",
+        "website": "https://www.gouvernement.mr/"
+    },
+    {
+        "name": "Mauritius",
+        "bio": "Mauritius is an island nation in the Indian Ocean, known for its beaches and multicultural society. Capital: Port Louis.",
+        "website": "https://www.govmu.org/"
+    },
+    {
+        "name": "Morocco",
+        "bio": "Morocco is a North African country bordering the Atlantic Ocean and Mediterranean Sea. Capital: Rabat.",
+        "website": "https://www.maroc.ma/"
+    },
+    {
+        "name": "Mozambique",
+        "bio": "Mozambique is a southeastern African nation with a long Indian Ocean coastline. Capital: Maputo.",
+        "website": "https://www.portaldogoverno.gov.mz/"
+    },
+    {
+        "name": "Namibia",
+        "bio": "Namibia is a country in southwest Africa, known for the Namib Desert and diverse wildlife. Capital: Windhoek.",
+        "website": "https://www.gov.na/"
+    },
+    {
+        "name": "Niger",
+        "bio": "Niger is a landlocked country in West Africa, named after the Niger River. Capital: Niamey.",
+        "website": "https://www.gouv.ne/"
+    },
+    {
+        "name": "Nigeria",
+        "bio": "Nigeria is Africa's most populous country, known for its Nollywood film industry and oil reserves. Capital: Abuja.",
+        "website": "https://www.nigeria.gov.ng/"
+    },
+    {
+        "name": "Rwanda",
+        "bio": "Rwanda is a landlocked country in East Africa, known as the 'Land of a Thousand Hills.' Capital: Kigali.",
+        "website": "https://www.gov.rw/"
+    },
+    {
+        "name": "Sao Tome and Principe",
+        "bio": "Sao Tome and Principe is an island nation in the Gulf of Guinea, Central Africa. Capital: São Tomé.",
+        "website": "https://www.gov.st/"
+    },
+    {
+        "name": "Senegal",
+        "bio": "Senegal is a West African country with a rich history and vibrant music scene. Capital: Dakar.",
+        "website": "https://www.sec.gouv.sn/"
+    },
+    {
+        "name": "Seychelles",
+        "bio": "Seychelles is an archipelago of 115 islands in the Indian Ocean, off East Africa. Capital: Victoria.",
+        "website": "https://www.statehouse.gov.sc/"
+    },
+    {
+        "name": "Sierra Leone",
+        "bio": "Sierra Leone is a West African country known for its white-sand beaches and tragic civil war history. Capital: Freetown.",
+        "website": "https://statehouse.gov.sl/"
+    },
+    {
+        "name": "Somalia",
+        "bio": "Somalia is a country in the Horn of Africa, with the longest coastline on Africa's mainland. Capital: Mogadishu.",
+        "website": "https://www.somaligov.net/"
+    },
+    {
+        "name": "South Africa",
+        "bio": "South Africa is the southernmost country in Africa, known for its diversity, history, and natural beauty. Capital: Pretoria (administrative).",
+        "website": "https://www.gov.za/"
+    },
+    {
+        "name": "South Sudan",
+        "bio": "South Sudan is the world's newest country, gaining independence in 2011. Capital: Juba.",
+        "website": "https://www.goss.org/"
+    },
+    {
+        "name": "Sudan",
+        "bio": "Sudan is a country in Northeast Africa, known for its ancient pyramids and the Nile River. Capital: Khartoum.",
+        "website": "https://www.sudan.gov.sd/"
+    },
+    {
+        "name": "Tanzania",
+        "bio": "Tanzania is an East African country known for Mount Kilimanjaro and Serengeti National Park. Capital: Dodoma.",
+        "website": "https://www.tanzania.go.tz/"
+    },
+    {
+        "name": "Togo",
+        "bio": "Togo is a narrow West African country on the Gulf of Guinea, known for its palm-lined beaches. Capital: Lomé.",
+        "website": "https://www.republiquetogolaise.tg/"
+    },
+    {
+        "name": "Tunisia",
+        "bio": "Tunisia is a North African country bordering the Mediterranean Sea and Sahara Desert. Capital: Tunis.",
+        "website": "https://www.tunisie.gov.tn/"
+    },
+    {
+        "name": "Uganda",
+        "bio": "Uganda is a landlocked country in East Africa, known for its wildlife and Lake Victoria. Capital: Kampala.",
+        "website": "https://www.gou.go.ug/"
+    },
+    {
+        "name": "Zambia",
+        "bio": "Zambia is a landlocked country in Southern Africa, home to Victoria Falls. Capital: Lusaka.",
+        "website": "https://www.zambia.gov.zm/"
+    },
+    {
+        "name": "Zimbabwe",
+        "bio": "Zimbabwe is a landlocked country in Southern Africa, known for its dramatic landscape and diverse wildlife. Capital: Harare.",
+        "website": "https://www.zim.gov.zw/"
+    }
 ]
 
 # --- Global State ---
@@ -615,7 +873,7 @@ def start_handler(message):
             bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}!")
             bot.send_message(chat_id, f"✅ You joined with a referral code from {referrer_user['Name']}. They have been rewarded!")
     if not user.get("MoMoNumber"):
-        bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
+               bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
         user_momo_pending[chat_id] = "awaiting_momo"
         return
 
