@@ -52,7 +52,7 @@ class SheetManager:
                 existing = self.users_sheet.findall(str(user_id))
                 if not existing:
                     referral_code = f"REF{str(user_id)[-6:]}"
-                    row = [str(user_id), name, username or "", 3, 0, referrer_id or "", referral_code, 0, ""]
+                    row = [str(user_id), name, username or "", 0, 0, "", referral_code, 0, ""]
                     self.users_sheet.append_row(row)
                     logger.info(f"Registered user: {user_id}")
             self._retry_on_quota_exceeded(do_register)
@@ -62,11 +62,11 @@ class SheetManager:
     def get_user_data(self, user_id):
         try:
             def do_get_user():
-                records = self.users_sheet.get_all_records(expected_headers=['UserID', 'Name', 'Username', 'Tokens', 'Points', 'ReferralEarnings', 'ReferrerID', 'MoMoNumber', 'LastClaimDate', 'referral_code'])
+                records = self.users_sheet.get_all_records()
                 for row in records:
                     if str(row.get('UserID', '')) == str(user_id):
                         return {
-                            'UserID': str(row.get('UserID', '')),
+                            'UserID': row.get('UserID', ''),
                             'Name': row.get('Name', 'Unknown'),
                             'Username': row.get('Username', ''),
                             'Tokens': float(row.get('Tokens', 0)),
@@ -215,10 +215,10 @@ class SheetManager:
     def find_user_by_referral_code(self, referral_code):
         try:
             def do_find():
-                users = self.get_all_users()
-                for user in users:
-                    if user.get('referral_code') == referral_code:
-                        return user
+                records = self.users_sheet.get_all_records()
+                for row in records:
+                    if row.get("referral_code") == referral_code:
+                        return row.get("UserID")
                 return None
             return self._retry_on_quota_exceeded(do_find)
         except Exception as e:
@@ -246,7 +246,7 @@ def register_user(user_id, name, username, referrer_id):
     sheet_manager_instance.register_user(user_id, name, username, referrer_id)
 
 def get_user_data(user_id):
-    return sheet_manager_instance.get_user_data(user_id)
+    return sheet_manager_instance.get_user_data_flexible(user_id)
 
 def update_user_tokens_points(user_id, tokens, points):
     sheet_manager_instance.update_user_tokens_points(user_id, tokens, points)
