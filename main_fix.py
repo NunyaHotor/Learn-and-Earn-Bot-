@@ -40,7 +40,15 @@ API_KEY = os.getenv("TELEGRAM_API_KEY") or "YOUR_FALLBACK_API_KEY"
 bot = TeleBot(API_KEY, parse_mode='HTML')
 
 # FIX: Make admin IDs configurable via environment variable
-ADMIN_CHAT_IDS = [int(id.strip()) for id in os.getenv("ADMIN_CHAT_IDS", "2145372547").split(",") if id.strip()]
+ADMIN_CHAT_IDS = []
+for id_str in os.getenv("ADMIN_CHAT_IDS", "2145372547").split(","):
+    id_str = id_str.strip()
+    if not id_str:
+        continue
+    try:
+        ADMIN_CHAT_IDS.append(int(id_str))
+    except ValueError:
+        logger.warning(f"Invalid admin ID in ADMIN_CHAT_IDS env: '{id_str}' (must be numeric)")
 
 USD_TO_CEDIS_RATE = exchange_rate_service.get_rate()
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"

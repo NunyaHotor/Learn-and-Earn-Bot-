@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 # Admin check function
 def is_admin(chat_id: int) -> bool:
     """Check if user is an admin"""
-    admin_chat_ids = [2145372547]  # Replace with actual admin IDs
+    import os
+    admin_chat_ids_str = os.getenv("ADMIN_CHAT_IDS", "")
+    admin_chat_ids = [int(cid.strip()) for cid in admin_chat_ids_str.split(",") if cid.strip().isdigit()]
     return chat_id in admin_chat_ids
 
 class UserPreferenceService:

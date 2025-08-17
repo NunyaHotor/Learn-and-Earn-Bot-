@@ -49,7 +49,7 @@ class UIEnhancer:
         markup.add(
             KeyboardButton("🇺🇸 English"),
             KeyboardButton("🇫🇷 French"),
-            KeyboardButton("🇸🇪 Swedish"),
+            KeyboardButton("🇰🇪 Swahili"),
             KeyboardButton("🇸🇦 Arabic")
         )
         return markup
@@ -58,10 +58,10 @@ class UIEnhancer:
         """Create zone selection menu"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(
-            KeyboardButton("🇺🇸 English"),
-            KeyboardButton("🇫🇷 French"),
-            KeyboardButton("🇸🇪 Swedish"),
-            KeyboardButton("🇸🇦 Arabic")
+            KeyboardButton("🌍 Africa"),
+            KeyboardButton("🌏 Asia"),
+            KeyboardButton("🌎 Americas"),
+            KeyboardButton("🌐 Europe")
         )
         return markup
         
