@@ -8,7 +8,7 @@ import schedule
 import traceback
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-
+from googletrans import Translator
 from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
