@@ -741,7 +741,11 @@ def start_new_quiz(chat_id, mode):
     answer_markup = InlineKeyboardMarkup()
     for choice in choices:
         answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
-    answer_markup.add(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"))
+    answer_markup.add(
+        InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"),
+        InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"),
+        InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main_menu")
+    )
     bot.send_message(chat_id, f"🧠 <b>{'General' if mode == 'general' else user_selected_zone[chat_id]} Quiz:</b>\n{question}", reply_markup=answer_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("answer:"))
@@ -1241,6 +1245,14 @@ def new_game_handler(call):
         del paused_games[chat_id]
     mode = user_quiz_mode.get(chat_id, "general")
     start_new_quiz(chat_id, mode)
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "return_main_menu")
+def return_main_menu_handler(call):
+    chat_id = call.message.chat.id
+    if chat_id in current_question:
+        del current_question[chat_id]
+    bot.send_message(chat_id, "Returning to main menu...", reply_markup=create_main_menu(chat_id))
     bot.answer_callback_query(call.id)
 
 # --- Bot Polling ---
