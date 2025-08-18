@@ -45,7 +45,6 @@ ADMIN_CHAT_IDS = [
 
 API_KEY = os.getenv("TELEGRAM_API_KEY") or "YOUR_FALLBACK_API_KEY"
 bot = TeleBot(API_KEY, parse_mode='HTML')
-ADMIN_CHAT_IDS = [2145372547]
 translator = Translator()
 
 USD_TO_CEDIS_RATE = 11.8
@@ -176,77 +175,121 @@ Hello {name}! Ready to earn while you learn African history and culture?
 Ready to start your learning journey? 🚀
 """
 
-# --- Quiz Data ---
-GENERAL_QUIZZES = [
-    {"q": "Who was Ghana's first president?", "a": "Kwame Nkrumah", "choices": ["Kwame Nkrumah", "Rawlings", "Mahama", "Busia"]},
-    {"q": "When did Ghana gain independence?", "a": "1957", "choices": ["1945", "1957", "1960", "1966"]},
-    {"q": "What is the capital of Ghana?", "a": "Accra", "choices": ["Kumasi", "Tamale", "Accra", "Ho"]},
-    {"q": "Which region is Lake Volta in?", "a": "Volta", "choices": ["Ashanti", "Volta", "Northern", "Bono"]},
-    {"q": "Who led the 1948 Accra Riots?", "a": "The Big Six", "choices": ["Yaa Asantewaa", "The Big Six", "Danquah", "Rawlings"]},
-    {"q": "What is the largest country in Africa by land area?", "a": "Algeria", "choices": ["Nigeria", "Algeria", "Egypt", "South Africa"]},
-    {"q": "Which African country has the most pyramids?", "a": "Sudan", "choices": ["Egypt", "Sudan", "Ethiopia", "Libya"]},
-    {"q": "What is the official language of Angola?", "a": "Portuguese", "choices": ["French", "Portuguese", "English", "Spanish"]},
-    {"q": "Which African river is the longest?", "a": "Nile", "choices": ["Congo", "Niger", "Zambezi", "Nile"]},
-    {"q": "Which African country is known as the Rainbow Nation?", "a": "South Africa", "choices": ["Ghana", "South Africa", "Kenya", "Tanzania"]},
-    {"q": "Which African island nation lies off the southeast coast of Africa?", "a": "Madagascar", "choices": ["Seychelles", "Mauritius", "Madagascar", "Comoros"]},
-    {"q": "What is the largest desert in Africa?", "a": "Sahara", "choices": ["Namib", "Sahara", "Kalahari", "Gobi"]},
-    {"q": "Which African country was never colonized?", "a": "Ethiopia", "choices": ["Ghana", "Liberia", "Ethiopia", "Morocco"]},
-    {"q": "Which African country produces the most cocoa?", "a": "Côte d'Ivoire", "choices": ["Ghana", "Nigeria", "Cameroon", "Côte d'Ivoire"]},
-    {"q": "What is the currency of Nigeria?", "a": "Naira", "choices": ["Cedi", "Shilling", "Rand", "Naira"]},
-    {"q": "Who was the Ethiopian emperor who defeated Italy at Adwa in 1896?", "a": "Menelik II", "choices": ["Haile Selassie", "Menelik II", "Tewodros II", "Yohannes IV"]},
-    {"q": "Which ancient African kingdom was known for its gold trade?", "a": "Mali Empire", "choices": ["Songhai", "Mali Empire", "Ghana Empire", "Kanem"]},
-    {"q": "Who was the first woman to win a Nobel Peace Prize from Africa?", "a": "Wangari Maathai", "choices": ["Ellen Johnson Sirleaf", "Wangari Maathai", "Leymah Gbowee", "Tawakkol Karman"]},
-    {"q": "Which African city is known as the 'Mother City'?", "a": "Cape Town", "choices": ["Lagos", "Cairo", "Cape Town", "Nairobi"]},
-    {"q": "What was the ancient name of Ethiopia?", "a": "Abyssinia", "choices": ["Nubia", "Kush", "Abyssinia", "Axum"]},
-    {"q": "Which African leader coined the term 'African Socialism'?", "a": "Julius Nyerere", "choices": ["Kwame Nkrumah", "Julius Nyerere", "Kenneth Kaunda", "Jomo Kenyatta"]},
-    {"q": "The Great Rift Valley runs through which part of Africa?", "a": "East Africa", "choices": ["West Africa", "North Africa", "East Africa", "Central Africa"]},
-    {"q": "Which African country was formerly known as Southern Rhodesia?", "a": "Zimbabwe", "choices": ["Zambia", "Zimbabwe", "Botswana", "Malawi"]},
-    {"q": "Who was known as the 'Father of African Nationalism'?", "a": "Marcus Garvey", "choices": ["W.E.B. Du Bois", "Marcus Garvey", "Kwame Nkrumah", "Nelson Mandela"]},
-    {"q": "Which African queen fought against Roman expansion?", "a": "Queen Nzinga", "choices": ["Queen Nefertiti", "Queen Nzinga", "Queen Candace", "Queen Amina"]},
-    {"q": "What is the highest mountain in Africa?", "a": "Mount Kilimanjaro", "choices": ["Mount Kenya", "Mount Kilimanjaro", "Ras Dashen", "Mount Elgon"]},
-    {"q": "Which African empire controlled the salt and gold trade routes?", "a": "Songhai Empire", "choices": ["Mali Empire", "Ghana Empire", "Songhai Empire", "Kanem Empire"]},
-    {"q": "Who was the last Pharaoh of Egypt?", "a": "Cleopatra VII", "choices": ["Nefertiti", "Hatshepsut", "Cleopatra VII", "Ankhesenamun"]},
-    {"q": "Which African country has the most official languages?", "a": "South Africa", "choices": ["Nigeria", "South Africa", "Kenya", "Tanzania"]},
-    {"q": "What was the original name of Ghana before independence?", "a": "Gold Coast", "choices": ["Gold Coast", "Ivory Coast", "Slave Coast", "Grain Coast"]},
-    {"q": "Which African kingdom was famous for its terracotta sculptures?", "a": "Nok", "choices": ["Benin", "Nok", "Ife", "Oyo"]},
-    {"q": "Who wrote the novel 'Things Fall Apart'?", "a": "Chinua Achebe", "choices": ["Wole Soyinka", "Chinua Achebe", "Ngugi wa Thiong'o", "Ama Ata Aidoo"]},
-    {"q": "Which lake is shared by Kenya, Tanzania, and Uganda?", "a": "Lake Victoria", "choices": ["Lake Tanganyika", "Lake Victoria", "Lake Malawi", "Lake Chad"]},
-    {"q": "What does 'Ubuntu' mean in African philosophy?", "a": "I am because we are", "choices": ["Unity in diversity", "I am because we are", "Strength in numbers", "Peace and harmony"]},
-    {"q": "Which African country was the first to gain independence?", "a": "Libya", "choices": ["Ghana", "Nigeria", "Libya", "Morocco"]},
-    {"q": "Who was the founder of the Kingdom of Zulu?", "a": "Shaka Zulu", "choices": ["Shaka Zulu", "Cetshwayo", "Dingane", "Mpande"]},
-    {"q": "Which African country is landlocked and bordered by 7 countries?", "a": "Chad", "choices": ["Mali", "Niger", "Chad", "Burkina Faso"]},
-    {"q": "What is the largest lake in Africa?", "a": "Lake Victoria", "choices": ["Lake Tanganyika", "Lake Victoria", "Lake Malawi", "Lake Chad"]},
-    {"q": "Which African country has both Atlantic and Indian Ocean coastlines?", "a": "South Africa", "choices": ["Somalia", "South Africa", "Morocco", "Egypt"]},
-    {"q": "What is the lowest point in Africa?", "a": "Lake Assal", "choices": ["Dead Sea", "Lake Assal", "Qattara Depression", "Danakil Depression"]},
-    {"q": "Which African mountain range is located in Morocco?", "a": "Atlas Mountains", "choices": ["Atlas Mountains", "Drakensberg", "Ethiopian Highlands", "Ahaggar Mountains"]},
-    {"q": "What is the currency of Kenya?", "a": "Shilling", "choices": ["Rand", "Shilling", "Birr", "Dinar"]},
-    {"q": "Which African country uses the Franc CFA?", "a": "Senegal", "choices": ["Ghana", "Nigeria", "Senegal", "Ethiopia"]},
-    {"q": "What is the currency of Egypt?", "a": "Pound", "choices": ["Dinar", "Dirham", "Pound", "Birr"]},
-    {"q": "Which currency is used in Morocco?", "a": "Dirham", "choices": ["Dinar", "Dirham", "Franc", "Pound"]},
-    {"q": "What is the currency of Ethiopia?", "a": "Birr", "choices": ["Birr", "Shilling", "Rand", "Naira"]},
-    {"q": "Which African country is the largest producer of diamonds?", "a": "Botswana", "choices": ["South Africa", "Botswana", "Angola", "Congo"]},
-    {"q": "What is Africa's largest stock exchange?", "a": "Johannesburg Stock Exchange", "choices": ["Nigerian Stock Exchange", "Johannesburg Stock Exchange", "Egyptian Exchange", "Nairobi Securities Exchange"]},
-    {"q": "Which African country exports the most oil?", "a": "Nigeria", "choices": ["Angola", "Nigeria", "Algeria", "Libya"]},
-    {"q": "What is the main export of Zambia?", "a": "Copper", "choices": ["Gold", "Copper", "Diamonds", "Coffee"]},
-    {"q": "Which African country is the largest producer of coffee?", "a": "Ethiopia", "choices": ["Kenya", "Ethiopia", "Uganda", "Tanzania"]},
-    {"q": "Who was the first black president of South Africa?", "a": "Nelson Mandela", "choices": ["Nelson Mandela", "Thabo Mbeki", "Jacob Zuma", "Desmond Tutu"]},
-    {"q": "Which African organization promotes continental unity?", "a": "African Union", "choices": ["ECOWAS", "African Union", "SADC", "EAC"]},
-    {"q": "Who was Libya's leader for 42 years?", "a": "Muammar Gaddafi", "choices": ["Hosni Mubarak", "Muammar Gaddafi", "Idi Amin", "Robert Mugabe"]},
-    {"q": "Which African country had apartheid?", "a": "South Africa", "choices": ["Zimbabwe", "South Africa", "Namibia", "Angola"]},
-    {"q": "Who founded the African National Congress (ANC)?", "a": "John Dube", "choices": ["Nelson Mandela", "Oliver Tambo", "John Dube", "Walter Sisulu"]},
-    {"q": "What is the predominant religion in Ethiopia?", "a": "Christianity", "choices": ["Islam", "Christianity", "Judaism", "Traditional"]},
-    {"q": "Which city is considered holy in Ethiopian Christianity?", "a": "Lalibela", "choices": ["Addis Ababa", "Lalibela", "Gondar", "Axum"]},
-    {"q": "What is the main religion in Morocco?", "a": "Islam", "choices": ["Christianity", "Islam", "Judaism", "Traditional"]},
-    {"q": "Which African country has the most Christians?", "a": "Nigeria", "choices": ["Ethiopia", "Nigeria", "Congo", "Kenya"]},
-    {"q": "What is the holy month in Islam called?", "a": "Ramadan", "choices": ["Hajj", "Ramadan", "Eid", "Zakat"]},
-    {"q": "Which ancient African civilization built the pyramids at Meroë?", "a": "Kingdom of Kush", "choices": ["Ancient Egypt", "Kingdom of Kush", "Axum", "Nubia"]},
-    {"q": "Who was the famous warrior queen of the Zulu?", "a": "Queen Nandi", "choices": ["Queen Nzinga", "Queen Nandi", "Queen Amina", "Queen Kandake"]},
-    {"q": "Which African country was colonized by Belgium?", "a": "Congo", "choices": ["Rwanda", "Congo", "Burundi", "All of these"]},
-    {"q": "What year did African Union replace OAU?", "a": "2001", "choices": ["1999", "2000", "2001", "2002"]},
-    {"q": "Which African leader wrote 'How Europe Underdeveloped Africa'?", "a": "Walter Rodney", "choices": ["Kwame Nkrumah", "Walter Rodney", "Julius Nyerere", "Frantz Fanon"]}
-]
-
-ZONE_QUIZZES = {
+# --- Unified Quiz Data ---
+ALL_QUIZZES = {
+    "General": [
+        {"q": "Who was Ghana's first president?", "a": "Kwame Nkrumah", "choices": ["Kwame Nkrumah", "Rawlings", "Mahama", "Busia"]},
+        {"q": "When did Ghana gain independence?", "a": "1957", "choices": ["1945", "1957", "1960", "1966"]},
+        {"q": "What is the capital of Ghana?", "a": "Accra", "choices": ["Kumasi", "Tamale", "Accra", "Ho"]},
+        {"q": "Which region is Lake Volta in?", "a": "Volta", "choices": ["Ashanti", "Volta", "Northern", "Bono"]},
+        {"q": "Who led the 1948 Accra Riots?", "a": "The Big Six", "choices": ["Yaa Asantewaa", "The Big Six", "Danquah", "Rawlings"]},
+        {"q": "What is the largest country in Africa by land area?", "a": "Algeria", "choices": ["Nigeria", "Algeria", "Egypt", "South Africa"]},
+        {"q": "Which African country has the most pyramids?", "a": "Sudan", "choices": ["Egypt", "Sudan", "Ethiopia", "Libya"]},
+        {"q": "What is the official language of Angola?", "a": "Portuguese", "choices": ["French", "Portuguese", "English", "Spanish"]},
+        {"q": "Which African river is the longest?", "a": "Nile", "choices": ["Congo", "Niger", "Zambezi", "Nile"]},
+        {"q": "Which African country is known as the Rainbow Nation?", "a": "South Africa", "choices": ["Ghana", "South Africa", "Kenya", "Tanzania"]},
+        {"q": "Which African island nation lies off the southeast coast of Africa?", "a": "Madagascar", "choices": ["Seychelles", "Mauritius", "Madagascar", "Comoros"]},
+        {"q": "What is the largest desert in Africa?", "a": "Sahara", "choices": ["Namib", "Sahara", "Kalahari", "Gobi"]},
+        {"q": "Which African country was never colonized?", "a": "Ethiopia", "choices": ["Ghana", "Liberia", "Ethiopia", "Morocco"]},
+        {"q": "Which African country produces the most cocoa?", "a": "Côte d'Ivoire", "choices": ["Ghana", "Nigeria", "Cameroon", "Côte d'Ivoire"]},
+        {"q": "What is the currency of Nigeria?", "a": "Naira", "choices": ["Cedi", "Shilling", "Rand", "Naira"]},
+        {"q": "Who was the Ethiopian emperor who defeated Italy at Adwa in 1896?", "a": "Menelik II", "choices": ["Haile Selassie", "Menelik II", "Tewodros II", "Yohannes IV"]},
+        {"q": "Which ancient African kingdom was known for its gold trade?", "a": "Mali Empire", "choices": ["Songhai", "Mali Empire", "Ghana Empire", "Kanem"]},
+        {"q": "Who was the first woman to win a Nobel Peace Prize from Africa?", "a": "Wangari Maathai", "choices": ["Ellen Johnson Sirleaf", "Wangari Maathai", "Leymah Gbowee", "Tawakkol Karman"]},
+        {"q": "Which African city is known as the 'Mother City'?", "a": "Cape Town", "choices": ["Lagos", "Cairo", "Cape Town", "Nairobi"]},
+        {"q": "What was the ancient name of Ethiopia?", "a": "Abyssinia", "choices": ["Nubia", "Kush", "Abyssinia", "Axum"]},
+        {"q": "Which African leader coined the term 'African Socialism'?", "a": "Julius Nyerere", "choices": ["Kwame Nkrumah", "Julius Nyerere", "Kenneth Kaunda", "Jomo Kenyatta"]},
+        {"q": "The Great Rift Valley runs through which part of Africa?", "a": "East Africa", "choices": ["West Africa", "North Africa", "East Africa", "Central Africa"]},
+        {"q": "Which African country was formerly known as Southern Rhodesia?", "a": "Zimbabwe", "choices": ["Zambia", "Zimbabwe", "Botswana", "Malawi"]},
+        {"q": "Who was known as the 'Father of African Nationalism'?", "a": "Marcus Garvey", "choices": ["W.E.B. Du Bois", "Marcus Garvey", "Kwame Nkrumah", "Nelson Mandela"]},
+        {"q": "Which African queen fought against Roman expansion?", "a": "Queen Nzinga", "choices": ["Queen Nefertiti", "Queen Nzinga", "Queen Candace", "Queen Amina"]},
+        {"q": "What is the highest mountain in Africa?", "a": "Mount Kilimanjaro", "choices": ["Mount Kenya", "Mount Kilimanjaro", "Ras Dashen", "Mount Elgon"]},
+        {"q": "Which African empire controlled the salt and gold trade routes?", "a": "Songhai Empire", "choices": ["Mali Empire", "Ghana Empire", "Songhai Empire", "Kanem Empire"]},
+        {"q": "Who was the last Pharaoh of Egypt?", "a": "Cleopatra VII", "choices": ["Nefertiti", "Hatshepsut", "Cleopatra VII", "Ankhesenamun"]},
+        {"q": "Which African country has the most official languages?", "a": "South Africa", "choices": ["Nigeria", "South Africa", "Kenya", "Tanzania"]},
+        {"q": "What was the original name of Ghana before independence?", "a": "Gold Coast", "choices": ["Gold Coast", "Ivory Coast", "Slave Coast", "Grain Coast"]},
+        {"q": "Which African kingdom was famous for its terracotta sculptures?", "a": "Nok", "choices": ["Benin", "Nok", "Ife", "Oyo"]},
+        {"q": "Who wrote the novel 'Things Fall Apart'?", "a": "Chinua Achebe", "choices": ["Wole Soyinka", "Chinua Achebe", "Ngugi wa Thiong'o", "Ama Ata Aidoo"]},
+        {"q": "Which lake is shared by Kenya, Tanzania, and Uganda?", "a": "Lake Victoria", "choices": ["Lake Tanganyika", "Lake Victoria", "Lake Malawi", "Lake Chad"]},
+        {"q": "What does 'Ubuntu' mean in African philosophy?", "a": "I am because we are", "choices": ["Unity in diversity", "I am because we are", "Strength in numbers", "Peace and harmony"]},
+        {"q": "Which African country was the first to gain independence?", "a": "Libya", "choices": ["Ghana", "Nigeria", "Libya", "Morocco"]},
+        {"q": "Who was the founder of the Kingdom of Zulu?", "a": "Shaka Zulu", "choices": ["Shaka Zulu", "Cetshwayo", "Dingane", "Mpande"]},
+        {"q": "Which African country is landlocked and bordered by 7 countries?", "a": "Chad", "choices": ["Mali", "Niger", "Chad", "Burkina Faso"]},
+        {"q": "What is the largest lake in Africa?", "a": "Lake Victoria", "choices": ["Lake Tanganyika", "Lake Victoria", "Lake Malawi", "Lake Chad"]},
+        {"q": "Which African country has both Atlantic and Indian Ocean coastlines?", "a": "South Africa", "choices": ["Somalia", "South Africa", "Morocco", "Egypt"]},
+        {"q": "What is the lowest point in Africa?", "a": "Lake Assal", "choices": ["Dead Sea", "Lake Assal", "Qattara Depression", "Danakil Depression"]},
+        {"q": "Which African mountain range is located in Morocco?", "a": "Atlas Mountains", "choices": ["Atlas Mountains", "Drakensberg", "Ethiopian Highlands", "Ahaggar Mountains"]},
+        {"q": "What is the currency of Kenya?", "a": "Shilling", "choices": ["Rand", "Shilling", "Birr", "Dinar"]},
+        {"q": "Which African country uses the Franc CFA?", "a": "Senegal", "choices": ["Ghana", "Nigeria", "Senegal", "Ethiopia"]},
+        {"q": "What is the currency of Egypt?", "a": "Pound", "choices": ["Dinar", "Dirham", "Pound", "Birr"]},
+        {"q": "Which currency is used in Morocco?", "a": "Dirham", "choices": ["Dinar", "Dirham", "Franc", "Pound"]},
+        {"q": "What is the currency of Ethiopia?", "a": "Birr", "choices": ["Birr", "Shilling", "Rand", "Naira"]},
+        {"q": "Which African country is the largest producer of diamonds?", "a": "Botswana", "choices": ["South Africa", "Botswana", "Angola", "Congo"]},
+        {"q": "What is Africa's largest stock exchange?", "a": "Johannesburg Stock Exchange", "choices": ["Nigerian Stock Exchange", "Johannesburg Stock Exchange", "Egyptian Exchange", "Nairobi Securities Exchange"]},
+        {"q": "Which African country exports the most oil?", "a": "Nigeria", "choices": ["Angola", "Nigeria", "Algeria", "Libya"]},
+        {"q": "What is the main export of Zambia?", "a": "Copper", "choices": ["Gold", "Copper", "Diamonds", "Coffee"]},
+        {"q": "Which African country is the largest producer of coffee?", "a": "Ethiopia", "choices": ["Kenya", "Ethiopia", "Uganda", "Tanzania"]},
+        {"q": "Who was the first black president of South Africa?", "a": "Nelson Mandela", "choices": ["Nelson Mandela", "Thabo Mbeki", "Jacob Zuma", "Desmond Tutu"]},
+        {"q": "Which African organization promotes continental unity?", "a": "African Union", "choices": ["ECOWAS", "African Union", "SADC", "EAC"]},
+        {"q": "Who was Libya's leader for 42 years?", "a": "Muammar Gaddafi", "choices": ["Hosni Mubarak", "Muammar Gaddafi", "Idi Amin", "Robert Mugabe"]},
+        {"q": "Which African country had apartheid?", "a": "South Africa", "choices": ["Zimbabwe", "South Africa", "Namibia", "Angola"]},
+        {"q": "Who founded the African National Congress (ANC)?", "a": "John Dube", "choices": ["Nelson Mandela", "Oliver Tambo", "John Dube", "Walter Sisulu"]},
+        {"q": "What is the predominant religion in Ethiopia?", "a": "Christianity", "choices": ["Islam", "Christianity", "Judaism", "Traditional"]},
+        {"q": "Which city is considered holy in Ethiopian Christianity?", "a": "Lalibela", "choices": ["Addis Ababa", "Lalibela", "Gondar", "Axum"]},
+        {"q": "What is the main religion in Morocco?", "a": "Islam", "choices": ["Christianity", "Islam", "Judaism", "Traditional"]},
+        {"q": "Which African country has the most Christians?", "a": "Nigeria", "choices": ["Ethiopia", "Nigeria", "Congo", "Kenya"]},
+        {"q": "What is the holy month in Islam called?", "a": "Ramadan", "choices": ["Hajj", "Ramadan", "Eid", "Zakat"]},
+        {"q": "Which ancient African civilization built the pyramids at Meroë?", "a": "Kingdom of Kush", "choices": ["Ancient Egypt", "Kingdom of Kush", "Axum", "Nubia"]},
+        {"q": "Who was the famous warrior queen of the Zulu?", "a": "Queen Nandi", "choices": ["Queen Nzinga", "Queen Nandi", "Queen Amina", "Queen Kandake"]},
+        {"q": "Which African country was colonized by Belgium?", "a": "Congo", "choices": ["Rwanda", "Congo", "Burundi", "All of these"]},
+        {"q": "What year did African Union replace OAU?", "a": "2001", "choices": ["1999", "2000", "2001", "2002"]},
+        {"q": "Which African leader wrote 'How Europe Underdeveloped Africa'?", "a": "Walter Rodney", "choices": ["Kwame Nkrumah", "Walter Rodney", "Julius Nyerere", "Frantz Fanon"]}
+    ],
+    "West Africa": [
+        {"q": "Which country is the largest exporter of cocoa beans in West Africa?", "a": "Ivory Coast", "choices": ["Ivory Coast", "Ghana", "Nigeria", "Togo"]},
+        {"q": "Who founded the Ashanti Empire in present-day Ghana?", "a": "Osei Tutu", "choices": ["Osei Tutu", "Yaa Asantewaa", "Kwame Nkrumah", "Opoku Ware"]},
+        {"q": "Which ruler led the Mali Empire to its peak in the 14th century?", "a": "Mansa Musa", "choices": ["Sundiata Keita", "Mansa Musa", "Askia Muhammad", "Sonni Ali"]},
+        {"q": "Which West African country was the first to gain independence in 1957?", "a": "Ghana", "choices": ["Nigeria", "Ghana", "Senegal", "Liberia"]},
+        {"q": "Who led the Biafra secession attempt in Nigeria during the 1960s?", "a": "Odumegwu Ojukwu", "choices": ["Odumegwu Ojukwu", "Nnamdi Azikiwe", "Ahmadu Bello", "Tafawa Balewa"]},
+        {"q": "Which ancient Yoruba city-state is known for its bronze artworks?", "a": "Ife", "choices": ["Oyo", "Ife", "Benin", "Lagos"]},
+        {"q": "What was the primary commodity traded across the Trans-Saharan routes in West Africa?", "a": "Gold", "choices": ["Salt", "Gold", "Ivory", "Spices"]},
+        {"q": "Who is the president of Nigeria as of 2025?", "a": "Bola Tinubu", "choices": ["Bola Tinubu", "Muhammadu Buhari", "Goodluck Jonathan", "Yemi Osinbajo"]},
+        {"q": "Where is the headquarters of the Economic Community of West African States (ECOWAS)?", "a": "Abuja", "choices": ["Lagos", "Abuja", "Accra", "Dakar"]},
+        {"q": "Who was the first president of Senegal from 1960 to 1980?", "a": "Léopold Sédar Senghor", "choices": ["Léopold Sédar Senghor", "Abdou Diouf", "Macky Sall", "Abdoulaye Wade"]},
+        {"q": "What is the capital city of Burkina Faso?", "a": "Ouagadougou", "choices": ["Bamako", "Ouagadougou", "Niamey", "Yamoussoukro"]},
+        {"q": "Which West African country elected Africa's first female president in 2006?", "a": "Liberia", "choices": ["Ghana", "Liberia", "Nigeria", "Sierra Leone"]},
+        {"q": "In which year did Ghana adopt its Fourth Republic constitution?", "a": "1992", "choices": ["1981", "1992", "2000", "1960"]},
+        {"q": "Which Yoruba deity is associated with thunder and lightning?", "a": "Shango", "choices": ["Ogun", "Shango", "Obatala", "Yemoja"]},
+        {"q": "Which West African country is known for originating Kente cloth?", "a": "Ghana", "choices": ["Nigeria", "Ghana", "Mali", "Senegal"]},
+        {"q": "Which dish is central to a cultural rivalry between Nigeria and Ghana?", "a": "Jollof Rice", "choices": ["Fufu", "Jollof Rice", "Egusi Soup", "Pounded Yam"]},
+        {"q": "What music genre was pioneered by Nigerian musician Fela Kuti?", "a": "Afrobeat", "choices": ["Highlife", "Afrobeat", "Juju", "Apala"]},
+        {"q": "Which West African ethnic group is known for its cosmological masks?", "a": "Dogon", "choices": ["Dogon", "Yoruba", "Ashanti", "Fulani"]},
+        {"q": "Which festival in Benin celebrates the Vodun religion?", "a": "Vodun Festival", "choices": ["Fetu Afahye", "Vodun Festival", "Durbar", "Homowo"]},
+        {"q": "Which Nigerian city is the hub of the country's oil industry?", "a": "Port Harcourt", "choices": ["Lagos", "Port Harcourt", "Abuja", "Kano"]},
+        {"q": "What is the official currency of Ghana?", "a": "Cedi", "choices": ["Naira", "Cedi", "CFA Franc", "Dalasi"]},
+        {"q": "Which Nigerian billionaire is known for his cement manufacturing empire?", "a": "Aliko Dangote", "choices": ["Aliko Dangote", "Femi Otedola", "Mike Adenuga", "Tony Elumelu"]},
+        {"q": "Which West African port is the largest by cargo volume?", "a": "Lagos", "choices": ["Lagos", "Tema", "Dakar", "Abidjan"]},
+        {"q": "Which Nigerian fintech company became a unicorn in 2021?", "a": "Flutterwave", "choices": ["Paystack", "Flutterwave", "Interswitch", "Opay"]},
+        {"q": "Which West African country is the largest producer of gold?", "a": "Ghana", "choices": ["Mali", "Ghana", "Nigeria", "Burkina Faso"]}
+    ],
+    "East Africa": [
+        {"q": "Which country is famous for its coffee exports?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
+        {"q": "What is the main currency used in Kenya?", "a": "Shilling", "choices": ["Shilling", "Franc", "Birr", "Dollar"]},
+        {"q": "Which country is a major exporter of tea?", "a": "Kenya", "choices": ["Kenya", "Uganda", "Tanzania", "Rwanda"]},
+        {"q": "Which country is known for its flower industry?", "a": "Kenya", "choices": ["Kenya", "Ethiopia", "Uganda", "Tanzania"]},
+        {"q": "What is the currency of Tanzania?", "a": "Shilling", "choices": ["Shilling", "Franc", "Birr", "Dollar"]},
+        {"q": "Who was the first president of Tanzania?", "a": "Julius Nyerere", "choices": ["Julius Nyerere", "John Magufuli", "Uhuru Kenyatta", "Yoweri Museveni"]},
+        {"q": "Which country gained independence from Britain in 1962?", "a": "Uganda", "choices": ["Uganda", "Kenya", "Tanzania", "Rwanda"]},
+        {"q": "Who is the current president of Kenya (2025)?", "a": "William Ruto", "choices": ["William Ruto", "Uhuru Kenyatta", "Jomo Kenyatta", "Daniel arap Moi"]},
+        {"q": "Which country has the capital city of Kigali?", "a": "Rwanda", "choices": ["Rwanda", "Burundi", "Uganda", "Kenya"]},
+        {"q": "Which country was formerly known as Tanganyika?", "a": "Tanzania", "choices": ["Tanzania", "Kenya", "Uganda", "Rwanda"]},
+        {"q": "The ancient city of Axum is located in which country?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
+        {"q": "Which country was home to the Buganda Kingdom?", "a": "Uganda", "choices": ["Uganda", "Kenya", "Tanzania", "Rwanda"]},
+        {"q": "Who was the famous queen of Sheba?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
+        {"q": "Which country is known for the ancient city of Lalibela?", "a": "Ethiopia", "choices": ["Ethiopia", "Kenya", "Uganda", "Tanzania"]},
+        {"q": "Which country was the site of the 1994 genocide?", "a": "Rwanda", "choices": ["Rwanda", "Burundi", "Uganda", "Kenya"]},
+        {"q": "What is the capital of Burundi?", "a": "Gitega", "choices": ["Gitega", "Bujumbura", "Kigali", "Nairobi"]},
+        {"q": "Which country is famous for the Serengeti National Park?", "a": "Tanzania", "choices": ["Tanzania", "Kenya", "Uganda", "Rwanda"]},
     "West Africa": [
         {"q": "Which country is the largest exporter of cocoa beans in West Africa?", "a": "Ivory Coast", "choices": ["Ivory Coast", "Ghana", "Nigeria", "Togo"]},
         {"q": "Who founded the Ashanti Empire in present-day Ghana?", "a": "Osei Tutu", "choices": ["Osei Tutu", "Yaa Asantewaa", "Kwame Nkrumah", "Opoku Ware"]},
@@ -720,7 +763,10 @@ def send_zone_menu(chat_id):
     bot.send_message(chat_id, "🌍 Choose an African zone to learn about:", reply_markup=markup)
 
 def send_language_menu(chat_id):
-    markup = ui_enhancer.create_language_menu()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton("English"), KeyboardButton("French"))
+    markup.add(KeyboardButton("Swahili"), KeyboardButton("Arabic"))
+    markup.add(KeyboardButton("🔙 Back to Zone Selection"))
     bot.send_message(chat_id, "🌐 Choose your language:", reply_markup=markup)
 
 def create_admin_menu():
@@ -878,7 +924,7 @@ def start_handler(message):
             reward_referrer(referrer_user['UserID'], 2)  # 2 tokens for referral
             increment_referral_count(referrer_user['UserID'], chat_id)
             logger.info(f"Referral reward: User {referrer_user['UserID']} got 2 tokens for referring {chat_id}")
-            bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}!")
+            bot.send_message(referrer_user['UserID'], f"🎉 You earned 2 tokens for referring {user['Name']}.")
             bot.send_message(chat_id, f"✅ You joined with a referral code from {referrer_user['Name']}. They have been rewarded!")
     if not user.get("MoMoNumber"):
         bot.send_message(chat_id, "📱 Please enter your MoMo number to continue:")
@@ -975,8 +1021,8 @@ def start_new_quiz(chat_id, mode):
         InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")
     )
     answer_markup.add(InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main"))
-    zone_name = user_selected_zone.get(chat_id, "General")
-    bot.send_message(chat_id, f"🧠 <b>{'General' if mode == 'general' else zone_name} Quiz:</b>\n{question}", reply_markup=answer_markup)
+    zone_name = user_selected_zone.get(chat_id, "General") if mode == "zone" else "General"
+    bot.send_message(chat_id, f"🧠 <b>{zone_name} Quiz:</b>\n{question}", reply_markup=answer_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("answer:"))
 def answer_handler(call):
@@ -1343,7 +1389,7 @@ def weekly_raffle_handler(message):
     winner_id = winner['UserID']
     current_tokens = float(winner.get('Tokens', 0))
     sheet_manager.update_user_tokens_points(winner_id, current_tokens + 10, winner.get('Points', 0))
-    log_token_transaction(winner_id, "RAFFLE_WIN", 10, "Weekly_Raffle")
+    log_token_purchase(winner_id, f"RAFFLE_{int(time.time())}", 10, "Weekly_Raffle")
     bot.send_message(winner_id, "🎰 Congratulations! You won 10 tokens in the weekly raffle!")
     bot.send_message(chat_id, f"🎰 Weekly Raffle Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 10 tokens awarded.", reply_markup=create_admin_menu())
 
@@ -1549,7 +1595,7 @@ def run_daily_lottery():
         winner_id = winner['UserID']
         current_tokens = float(winner.get('Tokens', 0))
         sheet_manager.update_user_tokens_points(winner_id, current_tokens + 5, winner.get('Points', 0))
-        log_token_transaction(winner_id, "LOTTERY_WIN", 5, "Daily_Lottery")
+        log_token_purchase(winner_id, f"LOTTERY_{int(time.time())}", 5, "Daily_Lottery")
         bot.send_message(winner_id, "🎉 Congratulations! You won 5 tokens in the daily lottery!")
         for admin_id in ADMIN_CHAT_IDS:
             bot.send_message(admin_id, f"🎯 Daily Lottery Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 5 tokens awarded.")
