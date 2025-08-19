@@ -28,7 +28,7 @@ from sheet_manager import (
 )
 from translation_service import translation_service
 from exchange_rate_service import exchange_rate_service
-from ui_enhancer import ui_enhancer
+from ui_enhancer import UIEnhancer
 from user_preference_service import user_preference_service
 
 # --- Setup ---

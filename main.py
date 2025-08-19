@@ -176,7 +176,7 @@ Ready to start your learning journey? 🚀
 """
 
 # --- Unified Quiz Data ---
-ALL_QUIZZES = {
+ZONE_QUIZZES = {
     "General": [
         {"q": "Who was Ghana's first president?", "a": "Kwame Nkrumah", "choices": ["Kwame Nkrumah", "Rawlings", "Mahama", "Busia"]},
         {"q": "When did Ghana gain independence?", "a": "1957", "choices": ["1945", "1957", "1960", "1966"]},
@@ -290,7 +290,6 @@ ALL_QUIZZES = {
         {"q": "Which country was the site of the 1994 genocide?", "a": "Rwanda", "choices": ["Rwanda", "Burundi", "Uganda", "Kenya"]},
         {"q": "What is the capital of Burundi?", "a": "Gitega", "choices": ["Gitega", "Bujumbura", "Kigali", "Nairobi"]},
         {"q": "Which country is famous for the Serengeti National Park?", "a": "Tanzania", "choices": ["Tanzania", "Kenya", "Uganda", "Rwanda"]},
-    "West Africa": [
         {"q": "Which country is the largest exporter of cocoa beans in West Africa?", "a": "Ivory Coast", "choices": ["Ivory Coast", "Ghana", "Nigeria", "Togo"]},
         {"q": "Who founded the Ashanti Empire in present-day Ghana?", "a": "Osei Tutu", "choices": ["Osei Tutu", "Yaa Asantewaa", "Kwame Nkrumah", "Opoku Ware"]},
         {"q": "Which ruler led the Mali Empire to its peak in the 14th century?", "a": "Mansa Musa", "choices": ["Sundiata Keita", "Mansa Musa", "Askia Muhammad", "Sonni Ali"]},
