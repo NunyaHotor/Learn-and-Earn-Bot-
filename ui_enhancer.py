@@ -80,7 +80,21 @@ class UIEnhancer:
                 )
             )
         return markup
-        
+
+    def create_admin_menu(self):
+        """Create admin menu"""
+        markup = ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add(
+            KeyboardButton("📊 Admin Dashboard"),
+            KeyboardButton("📋 View Pending Tokens"),
+            KeyboardButton("✅ Approve Token Purchase"),
+            KeyboardButton("📢 Broadcast Message"),
+            KeyboardButton("📈 User Stats"),
+            KeyboardButton("🎯 Run Daily Lottery"),
+            KeyboardButton("🎰 Run Weekly Raffle"),
+            KeyboardButton("🔙 Back to User Menu")
+        )
+        return markup
         
     def create_notification_button(self, text, callback_data, emoji="🔔"):
         """Create notification button"""
@@ -112,3 +126,4 @@ class UIEnhancer:
             )
         return markup
 
+ui_enhancer = UIEnhancer()
