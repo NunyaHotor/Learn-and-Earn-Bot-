@@ -52,7 +52,7 @@ class SheetManager:
                 existing = self.users_sheet.findall(str(user_id))
                 if not existing:
                     referral_code = f"REF{str(user_id)[-6:]}"
-                    row = [str(user_id), name, username or "", 0, 0, "", referral_code, 0, ""]
+                    row = [str(user_id), name, username or "", 3.0, 0.0, "", referral_code, 0.0, referrer_id or ""]
                     self.users_sheet.append_row(row)
                     logger.info(f"Registered user: {user_id}")
             self._retry_on_quota_exceeded(do_register)
@@ -60,37 +60,15 @@ class SheetManager:
             logger.error(f"Error registering user {user_id}: {e}")
 
     def get_user_data(self, user_id):
-        try:
-            def do_get_user():
-                records = self.users_sheet.get_all_records()
-                for row in records:
-                    if str(row.get('UserID', '')) == str(user_id):
-                        return {
-                            'UserID': row.get('UserID', ''),
-                            'Name': row.get('Name', 'Unknown'),
-                            'Username': row.get('Username', ''),
-                            'Tokens': float(row.get('Tokens', 0)),
-                            'Points': float(row.get('Points', 0)),
-                            'ReferralEarnings': float(row.get('ReferralEarnings', 0)),
-                            'ReferrerID': row.get('ReferrerID', ''),
-                            'MoMoNumber': row.get('MoMoNumber', ''),
-                            'LastClaimDate': row.get('LastClaimDate', ''),
-                            'referral_code': row.get('referral_code', '')
-                        }
-                return None
-            return self._retry_on_quota_exceeded(do_get_user)
-        except Exception as e:
-            logger.error(f"Error fetching user data for {user_id}: {e}")
-            return None
-
-    def get_user_data_flexible(self, user_id):
         """Get user data with flexible column mapping"""
         try:
             all_values = self.users_sheet.get_all_values()
             if not all_values:
                 return None
-
+                
             headers = all_values[0]
+            
+            # Create flexible mapping
             column_map = {}
             for i, header in enumerate(headers):
                 header_lower = str(header).lower().strip()
@@ -110,7 +88,7 @@ class SheetManager:
                     column_map['referral_code'] = i
                 elif 'referralearnings' in header_lower or 'referral_earnings' in header_lower:
                     column_map['ReferralEarnings'] = i
-
+            
             # Use default positions if not found
             default_map = {
                 'UserID': 0,
@@ -122,8 +100,11 @@ class SheetManager:
                 'referral_code': 6,
                 'ReferralEarnings': 7
             }
+            
+            # Merge with actual mapping
             final_map = {**default_map, **column_map}
-
+            
+            # Find user
             for row in all_values[1:]:
                 if len(row) > final_map['UserID'] and str(row[final_map['UserID']]) == str(user_id):
                     return {
@@ -147,8 +128,8 @@ class SheetManager:
                 cell = self.users_sheet.find(str(user_id))
                 if cell:
                     row = cell.row
-                    self.users_sheet.update_cell(row, 4, tokens)
-                    self.users_sheet.update_cell(row, 5, points)
+                    self.users_sheet.update_cell(row, 4, float(tokens))
+                    self.users_sheet.update_cell(row, 5, float(points))
                     logger.info(f"Updated tokens: {tokens}, points: {points} for user {user_id}")
             self._retry_on_quota_exceeded(do_update)
         except Exception as e:
@@ -162,8 +143,8 @@ class SheetManager:
                     row = cell.row
                     current_tokens = float(self.users_sheet.cell(row, 4).value or 0)
                     current_earnings = float(self.users_sheet.cell(row, 8).value or 0)
-                    self.users_sheet.update_cell(row, 4, current_tokens + tokens)
-                    self.users_sheet.update_cell(row, 8, current_earnings + tokens)
+                    self.users_sheet.update_cell(row, 4, current_tokens + float(tokens))
+                    self.users_sheet.update_cell(row, 8, current_earnings + float(tokens))
                     logger.info(f"Rewarded {tokens} tokens to referrer {referrer_id}")
             self._retry_on_quota_exceeded(do_reward)
         except Exception as e:
@@ -173,7 +154,7 @@ class SheetManager:
         try:
             def do_log():
                 timestamp = datetime.now(timezone.utc).isoformat()
-                row = [str(user_id), transaction_id, amount, payment_method or "N/A", timestamp]
+                row = [str(user_id), transaction_id, float(amount), payment_method or "N/A", timestamp]
                 self.transactions_sheet.append_row(row)
                 logger.info(f"Logged token purchase for {user_id}: {amount} tokens")
             self._retry_on_quota_exceeded(do_log)
@@ -211,7 +192,7 @@ class SheetManager:
                 cell = self.users_sheet.find(str(user_id))
                 if cell:
                     row = cell.row
-                    self.users_sheet.update_cell(row, 6, momo_number)
+                    self.users_sheet.update_cell(row, 6, str(momo_number))
                     logger.info(f"Updated MoMo number for {user_id}: {momo_number}")
             self._retry_on_quota_exceeded(do_update_momo)
         except Exception as e:
@@ -244,7 +225,7 @@ class SheetManager:
                 cell = self.users_sheet.find(str(user_id))
                 if cell:
                     row = cell.row
-                    self.users_sheet.update_cell(row, 9, date)
+                    self.users_sheet.update_cell(row, 9, str(date))
                     logger.info(f"Updated last claim date for {user_id}: {date}")
             self._retry_on_quota_exceeded(do_update_date)
         except Exception as e:
@@ -264,7 +245,7 @@ class SheetManager:
         try:
             def do_get_transactions():
                 records = self.transactions_sheet.get_all_records()
-                return [row for row in records if "PENDING" in row.get("transaction_id", "")]
+                return [row for row in records if "PENDING" in str(row.get("transaction_id", ""))]
             return self._retry_on_quota_exceeded(do_get_transactions)
         except Exception as e:
             logger.error(f"Error fetching pending transactions: {e}")
@@ -273,10 +254,10 @@ class SheetManager:
     def find_user_by_referral_code(self, referral_code):
         try:
             def do_find():
-                records = self.users_sheet.get_all_records()
-                for row in records:
-                    if row.get("referral_code") == referral_code:
-                        return row.get("UserID")
+                users = self.get_all_users()
+                for user in users:
+                    if str(user.get('referral_code', '')) == str(referral_code):
+                        return user
                 return None
             return self._retry_on_quota_exceeded(do_find)
         except Exception as e:
@@ -286,10 +267,10 @@ class SheetManager:
     def update_transaction_status(self, transaction_id, new_status):
         try:
             def do_update():
-                cell = self.transactions_sheet.find(transaction_id)
+                cell = self.transactions_sheet.find(str(transaction_id))
                 if cell:
                     row = cell.row
-                    self.transactions_sheet.update_cell(row, 2, new_status)
+                    self.transactions_sheet.update_cell(row, 2, str(new_status))
                     logger.info(f"Updated transaction {transaction_id} to {new_status}")
             self._retry_on_quota_exceeded(do_update)
         except Exception as e:
@@ -304,7 +285,7 @@ def register_user(user_id, name, username, referrer_id):
     sheet_manager_instance.register_user(user_id, name, username, referrer_id)
 
 def get_user_data(user_id):
-    return sheet_manager_instance.get_user_data_flexible(user_id)
+    return sheet_manager_instance.get_user_data(user_id)
 
 def update_user_tokens_points(user_id, tokens, points):
     sheet_manager_instance.update_user_tokens_points(user_id, tokens, points)
