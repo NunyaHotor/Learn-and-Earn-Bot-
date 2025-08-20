@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Optional
-from ui_enhancer_fixed import ui_enhancer
+from ui_enhancer import ui_enhancer
 
 logger = logging.getLogger(__name__)
 
