@@ -52,3 +52,10 @@ tzlocal==5.3.1
 urllib3==2.5.0
 wheel==0.45.1
 yarl==1.20.1
+pyTelegramBotAPI==4.28.0
+python-dotenv==1.1.1
+gspread==6.2.1
+google-auth==2.40.3
+google-auth-oauthlib==1.2.2
+schedule==1.2.2
+deep-translator==1.11.4
