@@ -999,10 +999,19 @@ marketplace_listings = []  # Each listing: dict with 'user_id', 'username', 'ite
 @bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
 def marketplace_menu_handler(message):
     chat_id = message.chat.id
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("➕ List Item"), KeyboardButton("🔍 Browse Marketplace"))
-    markup.add(KeyboardButton("🏠 Return to Main Menu"))
-    bot.send_message(chat_id, "🛒 Welcome to the Marketplace!\nChoose an option:", reply_markup=markup)
+    bot.send_message(
+        chat_id,
+        "🛒 <b>Marketplace - Coming Soon!</b>\n\n"
+        "🚧 We're building an exciting new marketplace where you can:\n"
+        "• Buy and sell digital goods\n"
+        "• Trade tokens for services\n"
+        "• Discover exclusive offers\n"
+        "• Connect with other learners\n\n"
+        "📅 Stay tuned for the official launch announcement!\n"
+        "🎁 Early adopters will get special bonuses when we go live.",
+        parse_mode="HTML",
+        reply_markup=create_main_menu(chat_id)
+    )
 
 @bot.message_handler(func=lambda message: message.text == "➕ List Item")
 def list_item_handler(message):
