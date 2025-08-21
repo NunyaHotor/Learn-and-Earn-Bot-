@@ -997,7 +997,58 @@ if __name__ == "__main__":
 @bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
 def marketplace_menu_handler(message):
     chat_id = message.chat.id
-    bot.send_message(chat_id, "Coming soon")
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton("➕ List Item"), KeyboardButton("🔍 Browse Marketplace"))
+    markup.add(KeyboardButton("🏠 Return to Main Menu"))
+    bot.send_message(chat_id, "🛒 Welcome to the Marketplace!\nChoose an option:", reply_markup=markup)
+
+@bot.message_handler(func=lambda message: message.text == "➕ List Item")
+def list_item_handler(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Please provide the item details in the format:\n\nItem Name\nPrice (in tokens)\nDescription\nContact Info")
+    bot.register_next_step_handler(message, process_item_listing)
+
+def process_item_listing(message):
+    chat_id = message.chat.id
+    details = message.text.split("\n")
+    if len(details) < 4:
+        bot.send_message(chat_id, "Invalid format. Please provide all details: Item Name, Price, Description, and Contact Info.")
+        return
+    item_name, price, description, contact_info = details
+    user = get_user_data(chat_id)
+    if not user:
+        bot.send_message(chat_id, "Please /start first.")
+        return
+    listing = {
+        'user_id': chat_id,
+        'username': user.get('Username', 'None'),
+        'item': item_name,
+        'price': price,
+        'desc': description,
+        'contact': contact_info
+    }
+    marketplace_listings.append(listing)
+    bot.send_message(chat_id, f"✅ Item listed successfully!\n\n{format_listing(listing)}", reply_markup=create_main_menu(chat_id))
+
+def format_listing(listing):
+    contact = f"@{listing['username']}" if listing['username'] and listing['username'] != 'None' else listing['contact']
+    return f"🛒 <b>{listing['item']}</b>\n💰 Price: {listing['price']} tokens\n📜 Description: {listing['desc']}\n📞 Contact: {contact}"
+
+@bot.message_handler(func=lambda message: message.text == "🔍 Browse Marketplace")
+def browse_marketplace_handler(message):
+    chat_id = message.chat.id
+    if not marketplace_listings:
+        bot.send_message(chat_id, "No listings yet. Be the first to list an item!", reply_markup=create_main_menu(chat_id))
+        return
+    for listing in marketplace_listings[-10:][::-1]:  # Show last 10 listings
+        text = (
+            f"🛒 <b>{listing['item']}</b>\n"
+            f"💬 {listing['desc']}\n"
+            f"💰 <b>Price:</b> GHS {listing['price']}\n"
+            f"📱 <b>Contact:</b> @{listing['username'] or listing['user_id']}"
+        )
+        bot.send_message(chat_id, text, parse_mode="HTML")
+    bot.send_message(chat_id, "End of listings.", reply_markup=create_main_menu(chat_id))
 
 @bot.callback_query_handler(func=lambda call: call.data == "notify_admin_purchase")
 def notify_admin_purchase_handler(call):
