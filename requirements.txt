@@ -59,3 +59,5 @@ google-auth==2.40.3
 google-auth-oauthlib==1.2.2
 schedule==1.2.2
 deep-translator==1.11.4
+flask==2.0.1
+gunicorn==20.1.0

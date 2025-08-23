@@ -24,7 +24,8 @@ from sheet_manager import (
     check_and_give_daily_reward,
     get_sheet_manager,
     find_user_by_referral_code,
-    update_transaction_status
+    update_transaction_status,
+    log_cleanup_submission
 )
 from translation_service import translation_service
 from exchange_rate_service import exchange_rate_service
@@ -32,6 +33,7 @@ from ui_enhancer import ui_enhancer
 from user_preference_service import user_preference_service
 import quiz_manager
 from quiz_manager import player_progress
+from cleanup_handler import register_cleanup_handlers
 
 # --- Setup ---
 load_dotenv()
@@ -925,7 +927,7 @@ def create_main_menu(chat_id):
     markup.add(KeyboardButton("📊 My Stats"), KeyboardButton("📈 Progress"))
     markup.add(KeyboardButton("🏆 Leaderboard"), KeyboardButton("👥 Referral"))
     markup.add(KeyboardButton("🌍 African Countries"), KeyboardButton("🛒 Marketplace"))
-    markup.add(KeyboardButton("ℹ️ Help"), KeyboardButton("💬 Send Feedback"))
+    markup.add(KeyboardButton("🗑️ Community Cleanup"), KeyboardButton("ℹ️ Help"), KeyboardButton("💬 Send Feedback"))
     
     # Add admin menu for admins
     if is_admin(chat_id):
@@ -967,6 +969,8 @@ def run_scheduler():
 if __name__ == "__main__":
     threading.Thread(target=run_scheduler, daemon=True).start()
     
+    register_cleanup_handlers(bot)
+
     # Delete webhook before starting polling to prevent 409 conflict
     try:
         bot.delete_webhook()
@@ -997,7 +1001,15 @@ if __name__ == "__main__":
 @bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
 def marketplace_menu_handler(message):
     chat_id = message.chat.id
-    bot.send_message(chat_id, "Coming soon")
+    marketplace_message = (
+        "🛒 <b>Welcome to the Marketplace!</b> (Coming Soon)\n\n"
+        "This is where your points turn into real-world value! In the future, you'll be able to:\n\n"
+        "• <b>Browse a catalog of products:</b> Use your points to claim exclusive items like branded merchandise, digital goods, and more.\n"
+        "• <b>Enter special raffles:</b> Participate in exclusive raffles for high-value prizes.\n"
+        "• <b>Support community projects:</b> Donate your points to support educational and environmental initiatives.\n\n"
+        "Stay tuned for updates! We're working hard to bring you an exciting marketplace experience."
+    )
+    bot.send_message(chat_id, marketplace_message)
 
 @bot.callback_query_handler(func=lambda call: call.data == "notify_admin_purchase")
 def notify_admin_purchase_handler(call):

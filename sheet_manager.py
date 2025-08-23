@@ -31,6 +31,11 @@ class SheetManager:
         self.users_sheet = self.spreadsheet.worksheet("Learn4Cash")
         self.transactions_sheet = self.spreadsheet.worksheet("TokenLog")
         self.referrals_sheet = self.spreadsheet.worksheet("Redemptions")
+        try:
+            self.cleanup_sheet = self.spreadsheet.worksheet("Cleanup Submissions")
+        except gspread.exceptions.WorksheetNotFound:
+            self.cleanup_sheet = self.spreadsheet.add_worksheet(title="Cleanup Submissions", rows="100", cols="20")
+            self.cleanup_sheet.append_row(["UserID", "Name", "Username", "Location", "MediaURL", "Timestamp", "Status"])
 
     def _retry_on_quota_exceeded(self, func, *args, **kwargs):
         attempts = 5
@@ -275,6 +280,9 @@ class SheetManager:
             self._retry_on_quota_exceeded(do_update)
         except Exception as e:
             logger.error(f"Error updating transaction status for {transaction_id}: {e}")
+
+def log_cleanup_submission(user_id, name, username, location, media_url):
+    sheet_manager_instance.log_cleanup_submission(user_id, name, username, location, media_url)
 
 sheet_manager_instance = SheetManager()
 
