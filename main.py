@@ -139,7 +139,7 @@ To create a generation of well-informed Africans who are proud of their heritage
 """
 
 WELCOME_MESSAGE = """
-🎓 <b>Welcome to Learn4Cash Quiz Bot!</b>
+🎓 <b>Welcome to Learn and Earn Quiz Bot!</b>
 
 Hello {name}! Ready to earn while you learn African history and culture?
 
@@ -176,7 +176,7 @@ Hello {name}! Ready to earn while you learn African history and culture?
 
 {motivation}
 
-Ready to start your learning journey? 🚀
+<b>Ready to start your learning and earning journey? 🚀</b>
 """
 
 
@@ -295,6 +295,8 @@ def start_handler(message):
         about_us=ABOUT_US,
         motivation=random.choice(MOTIVATIONAL_MESSAGES)
     )
+    with open('/home/mawutor/Downloads/Learn4Cash/L&E.png', 'rb') as photo:
+        bot.send_photo(chat_id, photo)
     bot.send_message(chat_id, welcome_msg, reply_markup=create_main_menu(chat_id))
 
 @bot.message_handler(func=lambda message: message.chat.id in user_momo_pending)
@@ -966,6 +968,46 @@ def run_scheduler():
         schedule.run_pending()
         time.sleep(60)
 
+# --- Marketplace Handlers ---
+@bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
+def marketplace_menu_handler(message):
+    chat_id = message.chat.id
+    marketplace_message = (
+        "🛒 <b>Welcome to the Marketplace!</b> (Coming Soon)\n\n"
+        "This is where your points turn into real-world value! In the future, you'll be able to:\n\n"
+        "• <b>Browse a catalog of products:</b> Use your points to claim exclusive items like branded merchandise, digital goods, and more.\n"
+        "• <b>Enter special raffles:</b> Participate in exclusive raffles for high-value prizes.\n"
+        "• <b>Support community projects:</b> Donate your points to support educational and environmental initiatives.\n\n"
+        "Stay tuned for updates! We're working hard to bring you an exciting marketplace experience."
+    )
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🔔 Notify Me When Available", callback_data="notify_me_marketplace"))
+    bot.send_message(chat_id, marketplace_message, reply_markup=markup, parse_mode='HTML')
+
+@bot.callback_query_handler(func=lambda call: call.data == "notify_me_marketplace")
+def notify_me_marketplace_handler(call):
+    chat_id = call.message.chat.id
+    user = get_user_data(chat_id)
+    bot.answer_callback_query(call.id, "✅ You will be notified when the marketplace is live!")
+    bot.send_message(chat_id, "Thanks for your interest! We'll let you know as soon as the Marketplace is open.")
+    
+    # Notify admin
+    if user:
+        admin_message = f"🔔 User @{user.get('Username', user.get('Name', chat_id))} is interested in the Marketplace feature."
+        for admin_id in ADMIN_CHAT_IDS:
+            try:
+                bot.send_message(admin_id, admin_message)
+            except Exception as e:
+                logger.error(f"Failed to send marketplace interest notification to admin {admin_id}: {e}")
+
+@bot.callback_query_handler(func=lambda call: call.data == "notify_admin_purchase")
+def notify_admin_purchase_handler(call):
+    chat_id = call.message.chat.id
+    user = get_user_data(chat_id)
+    for admin_id in ADMIN_CHAT_IDS:
+        bot.send_message(admin_id, f"User @{user.get('Username', chat_id)} has requested admin attention for a token purchase.")
+    bot.send_message(chat_id, "✅ Admin has been notified. Please wait for approval.")
+
 if __name__ == "__main__":
     threading.Thread(target=run_scheduler, daemon=True).start()
     
@@ -996,25 +1038,3 @@ if __name__ == "__main__":
             time.sleep(10)
     if retry_count >= max_retries:
         logger.error("Max retries reached. Bot polling stopped.")
-
-# --- Marketplace Handlers ---
-@bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
-def marketplace_menu_handler(message):
-    chat_id = message.chat.id
-    marketplace_message = (
-        "🛒 <b>Welcome to the Marketplace!</b> (Coming Soon)\n\n"
-        "This is where your points turn into real-world value! In the future, you'll be able to:\n\n"
-        "• <b>Browse a catalog of products:</b> Use your points to claim exclusive items like branded merchandise, digital goods, and more.\n"
-        "• <b>Enter special raffles:</b> Participate in exclusive raffles for high-value prizes.\n"
-        "• <b>Support community projects:</b> Donate your points to support educational and environmental initiatives.\n\n"
-        "Stay tuned for updates! We're working hard to bring you an exciting marketplace experience."
-    )
-    bot.send_message(chat_id, marketplace_message)
-
-@bot.callback_query_handler(func=lambda call: call.data == "notify_admin_purchase")
-def notify_admin_purchase_handler(call):
-    chat_id = call.message.chat.id
-    user = get_user_data(chat_id)
-    for admin_id in ADMIN_CHAT_IDS:
-        bot.send_message(admin_id, f"User @{user.get('Username', chat_id)} has requested admin attention for a token purchase.")
-    bot.send_message(chat_id, "✅ Admin has been notified. Please wait for approval.")

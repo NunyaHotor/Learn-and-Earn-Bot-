@@ -7,6 +7,14 @@ LOCATION, MEDIA, CONFIRMATION = range(3)
 # Store user submissions in a dictionary
 cleanup_submissions = {}
 
+# Define main menu buttons to prevent conversation hijacking
+main_menu_buttons = [
+    "🎮 Start Quiz", "🎁 Daily Reward", "💰 Buy Tokens", "🎁 Redeem Rewards",
+    "📊 My Stats", "📈 Progress", "🏆 Leaderboard", "👥 Referral",
+    "🌍 African Countries", "🛒 Marketplace", "🗑️ Community Cleanup", "ℹ️ Help",
+    "💬 Send Feedback", "🔧 Admin Menu"
+]
+
 def register_cleanup_handlers(bot):
     @bot.message_handler(func=lambda message: message.text == '🗑️ Community Cleanup')
     def start_cleanup(message):
@@ -28,10 +36,12 @@ def register_cleanup_handlers(bot):
 
     def location_handler(message, bot):
         chat_id = message.chat.id
-        if message.text == '/cancel':
+        if message.text == '/cancel' or message.text in main_menu_buttons:
             bot.send_message(chat_id, "Submission cancelled.")
             if chat_id in cleanup_submissions:
                 del cleanup_submissions[chat_id]
+            if message.text in main_menu_buttons:
+                bot.send_message(chat_id, f"Returning to main menu. Please click '{message.text}' again.")
             return
         
         cleanup_submissions[chat_id]['location'] = message.text
@@ -40,10 +50,12 @@ def register_cleanup_handlers(bot):
 
     def media_handler(message, bot):
         chat_id = message.chat.id
-        if message.text == '/cancel':
+        if message.text and (message.text == '/cancel' or message.text in main_menu_buttons):
             bot.send_message(chat_id, "Submission cancelled.")
             if chat_id in cleanup_submissions:
                 del cleanup_submissions[chat_id]
+            if message.text in main_menu_buttons:
+                bot.send_message(chat_id, f"Returning to main menu. Please click '{message.text}' again.")
             return
 
         media_id = None
