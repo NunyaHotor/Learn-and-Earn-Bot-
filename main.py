@@ -9,8 +9,9 @@ import traceback
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from googletrans import Translator
-from telebot import TeleBot
+from telebot import TeleBot, types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from flask import Flask, request, abort
 
 from sheet_manager import (
     register_user,
@@ -48,8 +49,11 @@ ADMIN_CHAT_IDS = [
 ]
 
 API_KEY = os.getenv("TELEGRAM_API_KEY") or "YOUR_FALLBACK_API_KEY"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot = TeleBot(API_KEY, parse_mode='HTML')
 translator = Translator()
+app = Flask(__name__)
+
 
 USD_TO_CEDIS_RATE = 11.8
 PAYSTACK_LINK = "https://paystack.shop/pay/6yjmo6ykwr"
@@ -90,7 +94,7 @@ REDEEM_OPTIONS = {
 }
 
 PAYMENT_INFO = """
-💸 <b>Payment Instructions</b>
+⚖️ <b>Payment Instructions</b>
 
 📲 <b>MTN MoMo Payment:</b>
 • Make payment to MTN merchant ID: <b>474994</b>
@@ -115,8 +119,8 @@ PAYMENT_INFO = """
 4. Send USDT (choose TRC20 network)
 5. Take screenshot of successful transaction
 
-📬 Send payment screenshot to @Learn4CashAdmin for verification.
-⚡ Tokens are added manually after payment confirmation!
+📧 Send payment screenshot to @Learn4CashAdmin for verification.
+⃣ Tokens are added manually after payment confirmation!
 """
 
 ABOUT_US = """
@@ -127,15 +131,15 @@ We are a revolutionary educational platform that combines learning with earning.
 🌍 <b>Our Vision:</b>
 To create a generation of well-informed Africans who are proud of their heritage and financially empowered through education.
 
-🎯 <b>What We Do:</b>
+📌 <b>What We Do:</b>
 • Interactive African-centered quizzes
 • Real rewards for learning achievements
 • Fair competition system
 • Community building through knowledge
 
-💡 <b>Founded:</b> 2024
+ℹ️ <b>Founded:</b> 2024
 📍 <b>Based:</b> Ghana, West Africa
-🌟 <b>Mission:</b> Education + Earning = Empowerment
+✨ <b>Mission:</b> Education + Earning = Empowerment
 """
 
 WELCOME_MESSAGE = """
@@ -145,7 +149,7 @@ Hello {name}! Ready to earn while you learn African history and culture?
 
 {about_us}
 
-🎮 <b>How to Play:</b>
+🎲 <b>How to Play:</b>
 • Answer quiz questions to earn points
 • Use tokens to play (1 token per question)
 • Earn 10 points per correct answer
@@ -163,13 +167,13 @@ Hello {name}! Ready to earn while you learn African history and culture?
 • Mobile money • Phones • Laptops
 • Weekly random raffles with prizes!
 
-🎯 <b>Special Features:</b>
+📌 <b>Special Features:</b>
 • Skip questions (once per question)
 • Pause and resume games
 • Track your progress
 • Compete on leaderboards
 
-🏆 <b>Fair Play:</b>
+🎯 <b>Fair Play:</b>
 • Daily, weekly, monthly winners announced
 • Transparent lottery system
 • Equal chances for all players
@@ -193,7 +197,7 @@ MOTIVATIONAL_MESSAGES = [
     "🌟 Believe in yourself! Every question you answer makes you smarter!",
     "🚀 Success is a journey, not a destination. Keep learning!",
     "💪 Your potential is limitless! Keep pushing forward!",
-    "🎯 Focus on progress, not perfection. You're doing great!",
+    "📌 Focus on progress, not perfection. You're doing great!",
     "🌈 Every expert was once a beginner. Keep going!",
     "✨ Knowledge is power, and you're gaining it every day!",
     "🔥 Champions are made in practice. Keep quizzing!",
@@ -201,8 +205,8 @@ MOTIVATIONAL_MESSAGES = [
     "💡 Smart minds ask great questions. You're on the right track!",
     "🏆 Winners never quit, and quitters never win. You've got this!",
     "🌱 Growth happens outside your comfort zone. Keep learning!",
-    "⭐ You're not just earning tokens, you're building knowledge!",
-    "🎪 Make learning fun! Every quiz is a step forward!",
+    "✪ You're not just earning tokens, you're building knowledge!",
+    "🎂 Make learning fun! Every quiz is a step forward!",
     "🦋 Transform your mind one question at a time!",
     "🎊 Celebrate small wins! They lead to big victories!"
 ]
@@ -218,14 +222,14 @@ def notify_admin_token_purchase(user_id, package_info, payment_method):
         if not user_data:
             return
         message = (
-            f"🔔 <b>NEW TOKEN PURCHASE NOTIFICATION</b>\n\n"
-            f"👤 <b>User:</b> {user_data['Name']} (ID: {user_id})\n"
-            f"📦 <b>Package:</b> {package_info.get('amount', 'Custom')} tokens\n"
-            f"💰 <b>Price:</b> ₵{package_info.get('price_cedis', 'N/A')} / ${package_info.get('price_usd', 'N/A')}\n"
-            f"💳 <b>Payment Method:</b> {payment_method}\n"
+            f"\u2709\uFE0F <b>NEW TOKEN PURCHASE NOTIFICATION</b>\n\n"
+            f"\ud83d\udc64 <b>User:</b> {user_data['Name']} (ID: {user_id})\n"
+            f"\ud83d\udce6 <b>Package:</b> {package_info.get('amount', 'Custom')} tokens\n"
+            f"\ud83d\udcb0 <b>Price:</b> ₢{package_info.get('price_cedis', 'N/A')} / ${package_info.get('price_usd', 'N/A')}\n"
+            f"\ud83d\udcb3 <b>Payment Method:</b> {payment_method}\n"
             f"⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
             f"📱 <b>User Contact:</b> @{user_data.get('Username', 'No username')}\n"
-            f"⚡ Use Admin Dashboard to approve purchase"
+            f"⃣ Use Admin Dashboard to approve purchase"
         )
         for admin_id in ADMIN_CHAT_IDS:
             bot.send_message(admin_id, message)
@@ -239,7 +243,7 @@ def send_feedback_to_admin(user_id, feedback_text):
             return
         feedback_message = (
             f"💬 <b>USER FEEDBACK RECEIVED</b>\n\n"
-            f"👤 <b>From:</b> {user_data['Name']} (ID: {user_id})\n"
+            f"\ud83d\udc64 <b>From:</b> {user_data['Name']} (ID: {user_id})\n"
             f"📱 <b>Username:</b> @{user_data.get('Username', 'No username')}\n"
             f"⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
             f"📝 <b>Message:</b>\n{feedback_text}\n"
@@ -309,7 +313,7 @@ def momo_number_handler(message):
         bot.send_message(chat_id, "✅ MoMo number saved!", reply_markup=create_main_menu(chat_id))
 
 # --- Quiz Handler ---
-@bot.message_handler(func=lambda message: message.text == "🎮 Start Quiz")
+@bot.message_handler(func=lambda message: message.text == "🎲 Start Quiz")
 def start_quiz_handler(message):
     chat_id = message.chat.id
     start_new_quiz(chat_id)
@@ -321,15 +325,15 @@ def start_new_quiz(chat_id):
         bot.send_message(chat_id, "Please /start first.")
         return
     if float(user['Tokens']) <= 0:
-        bot.send_message(chat_id, "⚠️ You don't have any tokens! Use '💰 Buy Tokens' to continue playing.")
+        bot.send_message(chat_id, "⚠️ You don't have any tokens! Use '$💰 Buy Tokens' to continue playing.")
         return
     if chat_id in paused_games:
         markup = InlineKeyboardMarkup()
         markup.add(
             InlineKeyboardButton("▶️ Resume Game", callback_data="resume_game"),
-            InlineKeyboardButton("🎮 New Game", callback_data="new_game")
+            InlineKeyboardButton("🎲 New Game", callback_data="new_game")
         )
-        bot.send_message(chat_id, "⏸️ You have a paused game. Would you like to resume or start a new one?", reply_markup=markup)
+        bot.send_message(chat_id, "⌐️ You have a paused game. Would you like to resume or start a new one?", reply_markup=markup)
         return
     
     quiz = quiz_manager.get_random_question(chat_id)
@@ -353,8 +357,8 @@ def start_new_quiz(chat_id):
     for choice in choices:
         answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
     answer_markup.add(
-        InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"),
-        InlineKeyboardButton("⏸️ Pause", callback_data="pause_game")
+        InlineKeyboardButton("⏩️ Skip", callback_data="skip_question"),
+        InlineKeyboardButton("⏰ Pause", callback_data="pause_game")
     )
     answer_markup.add(InlineKeyboardButton("🏠 Return to Main Menu", callback_data="return_main")
     )
@@ -391,14 +395,14 @@ def answer_handler(call):
     if tokens > 0:
         start_new_quiz(chat_id)
     else:
-        bot.send_message(chat_id, "🔚 You've run out of tokens. Use '💰 Buy Tokens' to continue playing!", reply_markup=create_main_menu(chat_id))
+        bot.send_message(chat_id, "🌊 End You've run out of tokens. Use '$💰 Buy Tokens' to continue playing!", reply_markup=create_main_menu(chat_id))
 
 @bot.callback_query_handler(func=lambda call: call.data == "skip_question")
 def skip_question_handler(call):
     chat_id = call.message.chat.id
     if chat_id in current_question and not current_question[chat_id]['skipped']:
         current_question[chat_id]['skipped'] = True
-        bot.send_message(chat_id, "⏭️ Question skipped! No tokens deducted.")
+        bot.send_message(chat_id, "⏩️ Question skipped! No tokens deducted.")
         del current_question[chat_id]
         start_new_quiz(chat_id)
     else:
@@ -410,7 +414,7 @@ def pause_game_handler(call):
     if chat_id in current_question:
         paused_games[chat_id] = current_question[chat_id]
         del current_question[chat_id]
-        bot.send_message(chat_id, "⏸️ Game paused. Use '🎮 Start Quiz' to resume.")
+        bot.send_message(chat_id, "⏰ Game paused. Use '🎮 Start Quiz' to resume.")
     else:
         bot.send_message(chat_id, "❌ No active game to pause.")
 
@@ -424,7 +428,7 @@ def resume_game_handler(call):
         answer_markup = InlineKeyboardMarkup()
         for choice in quiz['choices']:
             answer_markup.add(InlineKeyboardButton(choice, callback_data=f"answer:{choice}"))
-        answer_markup.add(InlineKeyboardButton("⏭️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏸️ Pause", callback_data="pause_game"))
+        answer_markup.add(InlineKeyboardButton("⏩️ Skip", callback_data="skip_question"), InlineKeyboardButton("⏰ Pause", callback_data="pause_game"))
         bot.send_message(chat_id, f"🧠 <b>Quiz:</b>\n{quiz['question']}", reply_markup=answer_markup)
     else:
         bot.send_message(chat_id, "❌ No paused game found.")
@@ -449,10 +453,10 @@ def buy_tokens_handler(message):
     chat_id = message.chat.id
     markup = InlineKeyboardMarkup()
     for label, data in TOKEN_PRICING.items():
-        price_text = f"{label} (₵{data['price_cedis']} / ${data['price_usd']})"
+        price_text = f"{label} (₢{data['price_cedis']} / ${data['price_usd']})"
         markup.add(InlineKeyboardButton(price_text, callback_data=f"buy:{label}"))
     markup.add(InlineKeyboardButton("Custom Amount", callback_data="buy:custom"))
-    bot.send_message(chat_id, f"💰 Choose a token package:\n\n{PAYMENT_INFO}", reply_markup=markup)
+    bot.send_message(chat_id, f"$💰 Choose a token package:\n\n{PAYMENT_INFO}", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy:"))
 def buy_token_callback(call):
@@ -476,7 +480,7 @@ def buy_token_callback(call):
         chat_id,
         f"To buy {amount} tokens for GHS {price}, send payment via MTN MoMo or USDT. Your Transaction ID is `{transaction_id}`. An admin will approve it shortly.",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("📢 Notify Admin", callback_data="notify_admin_purchase"))
+        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("📱 Notify Admin", callback_data="notify_admin_purchase"))
     )
     bot.answer_callback_query(call.id)
 
@@ -498,7 +502,6 @@ def custom_token_handler(message):
 @bot.message_handler(func=lambda message: message.text == "🎁 Redeem Rewards")
 def redeem_rewards_handler(message):
     chat_id = message.chat.id
-   
    
 
    
@@ -539,7 +542,7 @@ def daily_reward_handler(message):
     if rewarded:
         bot.send_message(chat_id, f"🎉 You claimed your daily reward! +1 token\n💰 Total tokens: {new_tokens}")
     else:
-        bot.send_message(chat_id, "⏳ You've already claimed your daily reward today. Come back tomorrow!")
+        bot.send_message(chat_id, "⏰ You've already claimed your daily reward today. Come back tomorrow!")
     bot.send_message(chat_id, "Back to main menu:", reply_markup=create_main_menu(chat_id))
 
 # --- Stats Handler ---
@@ -558,15 +561,15 @@ def stats_handler(message):
 👤 <b>Name:</b> {user['Name']}
 📱 <b>Username:</b> @{user.get('Username', 'None')}
 💰 <b>Tokens:</b> {user['Tokens']}
-🎯 <b>Points:</b> {user['Points']}
+📌 <b>Points:</b> {user['Points']}
 👥 <b>Referrals:</b> {int(user.get('ReferralEarnings', 0))}
 🔥 <b>Current Streak:</b> {progress['current_streak']}
 🏆 <b>Best Streak:</b> {progress['best_streak']}
 ✅ <b>Total Correct:</b> {progress['total_correct']}
 ❓ <b>Total Questions:</b> {progress['total_questions']}
 
-⏭️ <b>Skips Used:</b> {progress['skips_used']}
-⏸️ <b>Games Paused:</b> {progress['games_paused']}
+⏩️ <b>Skips Used:</b> {progress['skips_used']}
+⏰ <b>Games Paused:</b> {progress['games_paused']}
     """
     bot.send_message(chat_id, stats_message, reply_markup=create_main_menu(chat_id))
 
@@ -584,8 +587,8 @@ def progress_handler(message):
 🏆 <b>Best Streak:</b> {progress['best_streak']} correct
 ✅ <b>Accuracy:</b> {accuracy:.2f}%
 ❓ <b>Questions Answered:</b> {progress['total_questions']}
-⏭️ <b>Skips Used:</b> {progress['skips_used']}
-⏸️ <b>Games Paused:</b> {progress['games_paused']}
+⏩️ <b>Skips Used:</b> {progress['skips_used']}
+⏰ <b>Games Paused:</b> {progress['games_paused']}
     """
     bot.send_message(chat_id, progress_message, reply_markup=create_main_menu(chat_id))
 
@@ -600,7 +603,7 @@ def referral_handler(message):
     referral_code = user.get("referral_code", f"REF{str(chat_id)[-6:]}")
     referral_message = f"""
 👥 <b>Referral</b> Invite friends to Learn4Cash and earn <b>2 tokens</b> per referral!
-📲 Your referral code: <b>{referral_code}</b>
+📱 Your referral code: <b>{referral_code}</b>
 🔗 Share this link: <code>https://t.me/Learn4CashBot?start={referral_code}</code>
 👥 Total Referrals: <b>{int(user.get('ReferralEarnings', 0))}</b>
     """
@@ -625,7 +628,7 @@ def help_handler(message):
     help_message = f"""
 ℹ️ <b>Help & Instructions</b>
 
-🎮 <b>How to Play:</b>
+🎲 <b>How to Play:</b>
 • Select 'Start Quiz' to start
 • 1 token = 1 question
 • Correct answer = 10 points
@@ -661,13 +664,13 @@ def help_handler(message):
     bot.send_message(chat_id, help_message, reply_markup=create_main_menu(chat_id))
 
 # --- Admin Menu Handler ---
-@bot.message_handler(func=lambda message: message.text == "🔧 Admin Menu")
+@bot.message_handler(func=lambda message: message.text == "🛮️ Admin Menu")
 def admin_menu_handler(message):
     chat_id = message.chat.id
     if not is_admin(chat_id):
         bot.send_message(chat_id, "Unauthorized.")
         return
-    bot.send_message(chat_id, "🔧 Admin Menu", reply_markup=create_admin_menu())
+    bot.send_message(chat_id, "🛠️ Admin Menu", reply_markup=create_admin_menu())
 
 # --- Admin Dashboard Handler ---
 @bot.message_handler(func=lambda message: message.text == "📊 Admin Dashboard" and is_admin(message.chat.id))
@@ -685,14 +688,14 @@ def admin_dashboard_handler(message):
 
 👥 Total Users: {total_users}
 💰 Total Tokens Distributed: {total_tokens}
-🎯 Total Points Earned: {total_points}
+📌 Total Points Earned: {total_points}
 👥 Total Referrals: {total_referrals}
-📋 Pending Token Purchases: {len(pending_transactions)}
+📃 Pending Token Purchases: {len(pending_transactions)}
     """
     bot.send_message(chat_id, dashboard_message, reply_markup=create_admin_menu())
 
 # --- Run Daily Lottery Handler ---
-@bot.message_handler(func=lambda message: message.text == "🎯 Run Daily Lottery" and is_admin(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == "🏹‍⚠️ Run Daily Lottery" and is_admin(message.chat.id))
 def daily_lottery_handler(message):
     chat_id = message.chat.id
     sheet_manager = get_sheet_manager()
@@ -707,10 +710,10 @@ def daily_lottery_handler(message):
     sheet_manager.update_user_tokens_points(winner_id, current_tokens + 5, winner.get('Points', 0))
     log_token_purchase(winner_id, f"LOTTERY_{int(time.time())}", 5, "Daily_Lottery")
     bot.send_message(winner_id, "🎉 Congratulations! You won 5 tokens in the daily lottery!")
-    bot.send_message(chat_id, f"🎯 Daily Lottery Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 5 tokens awarded.", reply_markup=create_admin_menu())
+    bot.send_message(chat_id, f"🏹‍⚠️ Daily Lottery Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 5 tokens awarded.", reply_markup=create_admin_menu())
 
 # --- Run Weekly Raffle Handler ---
-@bot.message_handler(func=lambda message: message.text == "🎰 Run Weekly Raffle" and is_admin(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == "㊗️ Run Weekly Raffle" and is_admin(message.chat.id))
 def weekly_raffle_handler(message):
     chat_id = message.chat.id
     sheet_manager = get_sheet_manager()
@@ -724,11 +727,11 @@ def weekly_raffle_handler(message):
     current_tokens = float(winner.get('Tokens', 0))
     sheet_manager.update_user_tokens_points(winner_id, current_tokens + 10, winner.get('Points', 0))
     log_token_purchase(winner_id, f"RAFFLE_{int(time.time())}", 10, "Weekly_Raffle")
-    bot.send_message(winner_id, "🎰 Congratulations! You won 10 tokens in the weekly raffle!")
-    bot.send_message(chat_id, f"🎰 Weekly Raffle Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 10 tokens awarded.", reply_markup=create_admin_menu())
+    bot.send_message(winner_id, "㊗️ Congratulations! You won 10 tokens in the weekly raffle!")
+    bot.send_message(chat_id, f"㊗️ Weekly Raffle Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 10 tokens awarded.", reply_markup=create_admin_menu())
 
 # --- View Pending Tokens Handler ---
-@bot.message_handler(func=lambda message: message.text == "📋 View Pending Tokens" and is_admin(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == "�참 View Pending Tokens" and is_admin(message.chat.id))
 def view_pending_tokens_handler(message):
     chat_id = message.chat.id
     sheet_manager = get_sheet_manager()
@@ -736,7 +739,7 @@ def view_pending_tokens_handler(message):
     if not pending_transactions:
         bot.send_message(chat_id, "No pending token purchases.", reply_markup=create_admin_menu())
         return
-    pending_message = "📋 <b>Pending Token Purchases</b>\n\n"
+    pending_message = "�참 <b>Pending Token Purchases</b>\n\n"
     for tx in pending_transactions:
         user_id = tx.get('user_id')
         user = sheet_manager.get_user_data(user_id)
@@ -780,7 +783,7 @@ def process_approve_token_purchase(message):
     bot.send_message(chat_id, "❌ Transaction ID not found or already processed.", reply_markup=create_admin_menu())
 
 # --- Broadcast Message Handler ---
-@bot.message_handler(func=lambda message: message.text == "📢 Broadcast Message" and is_admin(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == "💌 Broadcast Message" and is_admin(message.chat.id))
 def broadcast_handler(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, "Please enter the message to broadcast to all users:")
@@ -797,10 +800,10 @@ def process_broadcast_message(message):
     for user in users:
         user_id = user['UserID']
         try:
-            bot.send_message(user_id, f"📢 <b>Announcement</b>\n\n{broadcast_text}")
+            bot.send_message(user_id, f"💌 <b>Announcement</b>\n\n{broadcast_text}")
         except Exception as e:
             logger.error(f"Failed to send broadcast to {user_id}: {e}")
-    bot.send_message(chat_id, f"📢 Broadcast sent to {len(users)} users.", reply_markup=create_admin_menu())
+    bot.send_message(chat_id, f"💌 Broadcast sent to {len(users)} users.", reply_markup=create_admin_menu())
 
 # --- User Stats Handler ---
 @bot.message_handler(func=lambda message: message.text == "📈 User Stats" and is_admin(message.chat.id))
@@ -827,19 +830,19 @@ def process_user_stats(message):
 👤 <b>User ID:</b> {user_id}
 📱 <b>Username:</b> @{user.get('Username', 'None')}
 💰 <b>Tokens:</b> {user['Tokens']}
-🎯 <b>Points:</b> {user['Points']}
+📌 <b>Points:</b> {user['Points']}
 👥 <b>Referrals:</b> {int(user.get('ReferralEarnings', 0))}
 🔥 <b>Current Streak:</b> {progress['current_streak']}
 🏆 <b>Best Streak:</b> {progress['best_streak']}
 ✅ <b>Total Correct:</b> {progress['total_correct']}
 ❓ <b>Total Questions:</b> {progress['total_questions']}
-⏭️ <b>Skips Used:</b> {progress['skips_used']}
-⏸️ <b>Games Paused:</b> {progress['games_paused']}
+⏩️ <b>Skips Used:</b> {progress['skips_used']}
+⏰ <b>Games Paused:</b> {progress['games_paused']}
     """
     bot.send_message(chat_id, stats_message, reply_markup=create_admin_menu())
 
 # --- Back to User Menu ---
-@bot.message_handler(func=lambda message: message.text == "🔙 Back to User Menu" and is_admin(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == "⬅️ Back to User Menu" and is_admin(message.chat.id))
 def back_to_user_menu_handler(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, "Returning to user menu...", reply_markup=create_main_menu(chat_id))
@@ -852,14 +855,14 @@ def fetch_current_affairs():
         if response.status_code == 200:
             data = response.json()
             articles = data.get("results", [])[:5]
-            news = "\n\n".join([f"📰 <b>{a['title']}</b>\n{a['link']}" for a in articles])
+            news = "\n\n".join([f"\ud83d\udcf9 <b>{a['title']}</b>\n{a['link']}" for a in articles])
             return news or "No current news found."
         return "Could not fetch news at this time."
     except Exception as e:
         logger.error(f"Current affairs fetch error: {e}")
         return "Error fetching news."
 
-@bot.message_handler(func=lambda message: message.text == "🌐 Current Affairs")
+@bot.message_handler(func=lambda message: message.text == "🌍 Current Affairs")
 def current_affairs_handler(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, "Fetching latest African and global business news...")
@@ -924,56 +927,47 @@ def create_main_menu(chat_id):
         return markup
     
     # Basic menu for all users
-    markup.add(KeyboardButton("🎮 Start Quiz"), KeyboardButton("🎁 Daily Reward"))
+    markup.add(KeyboardButton("🎲 Start Quiz"), KeyboardButton("🎁 Daily Reward"))
     markup.add(KeyboardButton("💰 Buy Tokens"), KeyboardButton("🎁 Redeem Rewards"))
     markup.add(KeyboardButton("📊 My Stats"), KeyboardButton("📈 Progress"))
     markup.add(KeyboardButton("🏆 Leaderboard"), KeyboardButton("👥 Referral"))
     markup.add(KeyboardButton("🌍 African Countries"), KeyboardButton("🛒 Marketplace"))
-    markup.add(KeyboardButton("🗑️ Community Cleanup"), KeyboardButton("ℹ️ Help"), KeyboardButton("💬 Send Feedback"))
+    markup.add(KeyboardButton("🗑️ Community Cleanup"), KeyboardButton("ℹ️ Help"), KeyboardButton("💬 Send Feedback")
+    )
     
     # Add admin menu for admins
     if is_admin(chat_id):
-        markup.add(KeyboardButton("🔧 Admin Menu"))
+        markup.add(KeyboardButton("🛮️ Admin Menu"))
     
     return markup
 
 def create_admin_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("📊 Admin Dashboard"), KeyboardButton("🎯 Run Daily Lottery"))
-    markup.add(KeyboardButton("🎰 Run Weekly Raffle"), KeyboardButton("📋 View Pending Tokens"))
-    markup.add(KeyboardButton("✅ Approve Token Purchase"), KeyboardButton("📢 Broadcast Message"))
-    markup.add(KeyboardButton("📈 User Stats"), KeyboardButton("🔙 Back to User Menu"))
+    markup.add(KeyboardButton("📊 Admin Dashboard"), KeyboardButton("🏹‍⚠️ Run Daily Lottery"))
+    markup.add(KeyboardButton("㊗️ Run Weekly Raffle"), KeyboardButton("�참 View Pending Tokens"))
+    markup.add(KeyboardButton("✅ Approve Token Purchase"), KeyboardButton("💌 Broadcast Message"))
+    markup.add(KeyboardButton("📈 User Stats"), KeyboardButton("⬅️ Back to User Menu"))
     return markup
 
-# --- Bot Polling ---
-def schedule_daily_lottery():
-    schedule.every().day.at("00:00").do(run_daily_lottery)
-
-def run_daily_lottery():
-    sheet_manager = get_sheet_manager()
-    users = sheet_manager.get_all_users()
-    eligible_users = [user for user in users if float(user.get('Tokens', 0)) > 0]
-    if eligible_users:
-        winner = random.choice(eligible_users)
-        winner_id = winner['UserID']
-        current_tokens = float(winner.get('Tokens', 0))
-        sheet_manager.update_user_tokens_points(winner_id, current_tokens + 5, winner.get('Points', 0))
-        log_token_purchase(winner_id, f"LOTTERY_{int(time.time())}", 5, "Daily_Lottery")
-        bot.send_message(winner_id, "🎉 Congratulations! You won 5 tokens in the daily lottery!")
-        for admin_id in ADMIN_CHAT_IDS:
-            bot.send_message(admin_id, f"🎯 Daily Lottery Winner: {winner['Name']} (@{winner.get('Username', 'None')}) - 5 tokens awarded.")
-
-def run_scheduler():
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+# --- Bot Webhook ---
+@app.route('/', methods=['POST'])
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+    else:
+        abort(403)
 
 # --- Marketplace Handlers ---
 @bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
 def marketplace_menu_handler(message):
+    logger.info("Marketplace handler called")
     chat_id = message.chat.id
     marketplace_message = (
-        "🛒 <b>Welcome to the Marketplace!</b> (Coming Soon)\n\n"
+        "\U0001f6d2 <b>Welcome to the Marketplace!</b> (Coming Soon)\n\n"
         "This is where your points turn into real-world value! In the future, you'll be able to:\n\n"
         "• <b>Browse a catalog of products:</b> Use your points to claim exclusive items like branded merchandise, digital goods, and more.\n"
         "• <b>Enter special raffles:</b> Participate in exclusive raffles for high-value prizes.\n"
@@ -984,6 +978,7 @@ def marketplace_menu_handler(message):
     markup.add(InlineKeyboardButton("🔔 Notify Me When Available", callback_data="notify_me_marketplace"))
     bot.send_message(chat_id, marketplace_message, reply_markup=markup, parse_mode='HTML')
 
+
 @bot.callback_query_handler(func=lambda call: call.data == "notify_me_marketplace")
 def notify_me_marketplace_handler(call):
     chat_id = call.message.chat.id
@@ -993,7 +988,7 @@ def notify_me_marketplace_handler(call):
     
     # Notify admin
     if user:
-        admin_message = f"🔔 User @{user.get('Username', user.get('Name', chat_id))} is interested in the Marketplace feature."
+        admin_message = f"\u2709\ufe0f User @{user.get('Username', user.get('Name', chat_id))} is interested in the Marketplace feature."
         for admin_id in ADMIN_CHAT_IDS:
             try:
                 bot.send_message(admin_id, admin_message)
@@ -1008,33 +1003,42 @@ def notify_admin_purchase_handler(call):
         bot.send_message(admin_id, f"User @{user.get('Username', chat_id)} has requested admin attention for a token purchase.")
     bot.send_message(chat_id, "✅ Admin has been notified. Please wait for approval.")
 
-if __name__ == "__main__":
-    threading.Thread(target=run_scheduler, daemon=True).start()
+def set_webhook():
+    """Set the webhook for the Telegram bot."""
+    if not API_KEY:
+        logger.error("TELEGRAM_API_KEY not found. Cannot set webhook.")
+        return
     
-    register_cleanup_handlers(bot)
-
-    # Delete webhook before starting polling to prevent 409 conflict
+    if not WEBHOOK_URL:
+        logger.error("WEBHOOK_URL not found. Cannot set webhook.")
+        return
+    
+    # Ensure the webhook URL includes the /webhook path
+    webhook_url = WEBHOOK_URL
+    if not webhook_url.endswith('/webhook'):
+        webhook_url = f"{webhook_url.rstrip('/')}/webhook"
+    
+    logger.info(f"Attempting to set webhook to: {webhook_url}")
+    
     try:
-        bot.delete_webhook()
-        logger.info("Webhook deleted successfully. Starting polling...")
+        # Remove any existing webhook first
+        remove_response = requests.post(f"https://api.telegram.org/bot{API_KEY}/deleteWebhook")
+        if remove_response.status_code == 200:
+            logger.info("Existing webhook removed successfully.")
+        
+        # Set the new webhook
+        response = requests.post(f"https://api.telegram.org/bot{API_KEY}/setWebhook", 
+                               data={"url": webhook_url})
+        
+        if response.status_code == 200:
+            logger.info("Webhook set successfully.")
+        else:
+            logger.error(f"Failed to set webhook: {response.text}")
+            
     except Exception as e:
-        logger.warning(f"Could not delete webhook: {e}")
-    
-    retry_count = 0
-    max_retries = 5
-    while retry_count < max_retries:
-        try:
-            bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)  # Increased timeout
-            break  # Exit loop if polling starts successfully
-        except requests.exceptions.ReadTimeout as e:
-            logger.error(f"ReadTimeout error: {e}")
-            retry_count += 1
-            logger.info(f"Retrying ({retry_count}/{max_retries}) in 10 seconds...")
-            time.sleep(10)
-        except Exception as e:
-            logger.error(f"Bot polling error: {e}\n{traceback.format_exc()}")
-            retry_count += 1
-            logger.info(f"Retrying ({retry_count}/{max_retries}) in 10 seconds...")
-            time.sleep(10)
-    if retry_count >= max_retries:
-        logger.error("Max retries reached. Bot polling stopped.")
+        logger.error(f"Error setting webhook: {e}")
+
+if __name__ == "__main__":
+    set_webhook()  # Automatically register the webhook at startup
+    register_cleanup_handlers(bot)
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 8080)))
