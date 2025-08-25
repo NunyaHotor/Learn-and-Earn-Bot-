@@ -65,32 +65,45 @@ TOKEN_PRICING = {
 }
 
 REDEEM_OPTIONS = {
-    "1 Token": {"points": 10, "reward": "+1 Token", "cedis": 0.4, "usd": round(0.4/USD_TO_CEDIS_RATE, 2), "tier": 1, "amount": 1},
-    "3 Tokens": {"points": 60, "reward": "+3 Tokens", "cedis": 1.2, "usd": round(1.2/USD_TO_CEDIS_RATE, 2), "tier": 1, "amount": 3},
-    "7 Tokens": {"points": 140, "reward": "+7 Tokens", "cedis": 2.8, "usd": round(2.8/USD_TO_CEDIS_RATE, 2), "tier": 1, "amount": 7},
-    "GHS 2 Airtime": {"points": 160, "reward": "GHS 2 Airtime", "cedis": 2, "usd": round(2/USD_TO_CEDIS_RATE, 2), "tier": 2},
-    "GHS 5 Airtime": {"points": 300, "reward": "GHS 5 Airtime", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2), "tier": 2},
-    "500MB Data": {"points": 200, "reward": "500MB Internet Data", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2), "tier": 2},
-    "1GB Data": {"points": 400, "reward": "1GB Internet Data", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2), "tier": 2},
-    "2GB Data": {"points": 700, "reward": "2GB Internet Data", "cedis": 8, "usd": round(8/USD_TO_CEDIS_RATE, 2), "tier": 2},
-    "15 Tokens": {"points": 300, "reward": "+15 Tokens", "cedis": 6.0, "usd": round(6.0/USD_TO_CEDIS_RATE, 2), "tier": 2, "amount": 15},
-    "25 Tokens": {"points": 500, "reward": "+25 Tokens", "cedis": 10.0, "usd": round(10.0/USD_TO_CEDIS_RATE, 2), "tier": 2, "amount": 25},
-    "GHS 10 Airtime": {"points": 1000, "reward": "GHS 10 Airtime", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "GHS 20 Airtime": {"points": 1800, "reward": "GHS 20 Airtime", "cedis": 20, "usd": round(20/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "5GB Data": {"points": 1200, "reward": "5GB Internet Data", "cedis": 15, "usd": round(15/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "10GB Data": {"points": 2000, "reward": "10GB Internet Data", "cedis": 25, "usd": round(25/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "GHS 10 MoMo": {"points": 1100, "reward": "GHS 10 MoMo", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "GHS 20 MoMo": {"points": 2100, "reward": "GHS 20 MoMo", "cedis": 20, "usd": round(20/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "GHS 50 MoMo": {"points": 5000, "reward": "GHS 50 MoMo", "cedis": 50, "usd": round(50/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "Basic Phone": {"points": 8000, "reward": "Basic Smartphone", "cedis": 400, "usd": round(400/USD_TO_CEDIS_RATE, 2), "tier": 3},
-    "50 Tokens": {"points": 1000, "reward": "+50 Tokens", "cedis": 20.0, "usd": round(20.0/USD_TO_CEDIS_RATE, 2), "tier": 3, "amount": 50},
-    "Samsung Phone": {"points": 15000, "reward": "Samsung Galaxy A15", "cedis": 1200, "usd": round(1200/USD_TO_CEDIS_RATE, 2), "tier": 4},
-    "iPhone": {"points": 35000, "reward": "iPhone 13", "cedis": 3500, "usd": round(3500/USD_TO_CEDIS_RATE, 2), "tier": 4},
-    "Budget Laptop": {"points": 25000, "reward": "HP Laptop 14", "cedis": 2800, "usd": round(2800/USD_TO_CEDIS_RATE, 2), "tier": 4},
-    "Gaming Laptop": {"points": 45000, "reward": "Gaming Laptop", "cedis": 5500, "usd": round(5500/USD_TO_CEDIS_RATE, 2), "tier": 4},
-    "GHS 100 MoMo": {"points": 10000, "reward": "GHS 100 MoMo", "cedis": 100, "usd": round(100/USD_TO_CEDIS_RATE, 2), "tier": 4},
-    "GHS 200 MoMo": {"points": 20000, "reward": "GHS 200 MoMo", "cedis": 200, "usd": round(200/USD_TO_CEDIS_RATE, 2), "tier": 4},
-    "100 Tokens": {"points": 2000, "reward": "+100 Tokens", "cedis": 40.0, "usd": round(40.0/USD_TO_CEDIS_RATE, 2), "tier": 4, "amount": 100}
+    "1 Token": {"points": 10, "reward": "+1 Token", "cedis": 0.4, "usd": round(0.4/USD_TO_CEDIS_RATE, 2), "tier": 1, "amount": 1, "category": "tokens"},
+    "3 Tokens": {"points": 60, "reward": "+3 Tokens", "cedis": 1.2, "usd": round(1.2/USD_TO_CEDIS_RATE, 2), "tier": 1, "amount": 3, "category": "tokens"},
+    "7 Tokens": {"points": 140, "reward": "+7 Tokens", "cedis": 2.8, "usd": round(2.8/USD_TO_CEDIS_RATE, 2), "tier": 1, "amount": 7, "category": "tokens"},
+    "15 Tokens": {"points": 300, "reward": "+15 Tokens", "cedis": 6.0, "usd": round(6.0/USD_TO_CEDIS_RATE, 2), "tier": 2, "amount": 15, "category": "tokens"},
+    "25 Tokens": {"points": 500, "reward": "+25 Tokens", "cedis": 10.0, "usd": round(10.0/USD_TO_CEDIS_RATE, 2), "tier": 2, "amount": 25, "category": "tokens"},
+    "50 Tokens": {"points": 1000, "reward": "+50 Tokens", "cedis": 20.0, "usd": round(20.0/USD_TO_CEDIS_RATE, 2), "tier": 3, "amount": 50, "category": "tokens"},
+    "100 Tokens": {"points": 2000, "reward": "+100 Tokens", "cedis": 40.0, "usd": round(40.0/USD_TO_CEDIS_RATE, 2), "tier": 4, "amount": 100, "category": "tokens"},
+    
+    "GHS 2 Airtime": {"points": 160, "reward": "GHS 2 Airtime", "cedis": 2, "usd": round(2/USD_TO_CEDIS_RATE, 2), "tier": 2, "category": "airtime"},
+    "GHS 5 Airtime": {"points": 300, "reward": "GHS 5 Airtime", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2), "tier": 2, "category": "airtime"},
+    "GHS 10 Airtime": {"points": 1000, "reward": "GHS 10 Airtime", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "airtime"},
+    "GHS 20 Airtime": {"points": 1800, "reward": "GHS 20 Airtime", "cedis": 20, "usd": round(20/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "airtime"},
+    
+    "500MB Data": {"points": 200, "reward": "500MB Internet Data", "cedis": 3, "usd": round(3/USD_TO_CEDIS_RATE, 2), "tier": 2, "category": "data"},
+    "1GB Data": {"points": 400, "reward": "1GB Internet Data", "cedis": 5, "usd": round(5/USD_TO_CEDIS_RATE, 2), "tier": 2, "category": "data"},
+    "2GB Data": {"points": 700, "reward": "2GB Internet Data", "cedis": 8, "usd": round(8/USD_TO_CEDIS_RATE, 2), "tier": 2, "category": "data"},
+    "5GB Data": {"points": 1200, "reward": "5GB Internet Data", "cedis": 15, "usd": round(15/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "data"},
+    "10GB Data": {"points": 2000, "reward": "10GB Internet Data", "cedis": 25, "usd": round(25/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "data"},
+    
+    "GHS 10 MoMo": {"points": 1100, "reward": "GHS 10 MoMo", "cedis": 10, "usd": round(10/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "momo"},
+    "GHS 20 MoMo": {"points": 2100, "reward": "GHS 20 MoMo", "cedis": 20, "usd": round(20/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "momo"},
+    "GHS 50 MoMo": {"points": 5000, "reward": "GHS 50 MoMo", "cedis": 50, "usd": round(50/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "momo"},
+    "GHS 100 MoMo": {"points": 10000, "reward": "GHS 100 MoMo", "cedis": 100, "usd": round(100/USD_TO_CEDIS_RATE, 2), "tier": 4, "category": "momo"},
+    "GHS 200 MoMo": {"points": 20000, "reward": "GHS 200 MoMo", "cedis": 200, "usd": round(200/USD_TO_CEDIS_RATE, 2), "tier": 4, "category": "momo"},
+    
+    "Basic Phone": {"points": 8000, "reward": "Basic Smartphone", "cedis": 400, "usd": round(400/USD_TO_CEDIS_RATE, 2), "tier": 3, "category": "gadgets"},
+    "Samsung Phone": {"points": 15000, "reward": "Samsung Galaxy A15", "cedis": 1200, "usd": round(1200/USD_TO_CEDIS_RATE, 2), "tier": 4, "category": "gadgets"},
+    "iPhone": {"points": 35000, "reward": "iPhone 13", "cedis": 3500, "usd": round(3500/USD_TO_CEDIS_RATE, 2), "tier": 4, "category": "gadgets"},
+    "Budget Laptop": {"points": 25000, "reward": "HP Laptop 14", "cedis": 2800, "usd": round(2800/USD_TO_CEDIS_RATE, 2), "tier": 4, "category": "gadgets"},
+    "Gaming Laptop": {"points": 45000, "reward": "Gaming Laptop", "cedis": 5500, "usd": round(5500/USD_TO_CEDIS_RATE, 2), "tier": 4, "category": "gadgets"}
+}
+
+# Category definitions
+REWARD_CATEGORIES = {
+    "tokens": {"name": "🪙 Tokens", "description": "Exchange points for more quiz tokens"},
+    "airtime": {"name": "📞 Airtime", "description": "Redeem mobile airtime credit"},
+    "data": {"name": "📶 Data", "description": "Get internet data bundles"},
+    "momo": {"name": "💰 MoMo", "description": "Mobile money transfers"},
+    "gadgets": {"name": "📱 Gadgets", "description": "Premium electronics and devices"}
 }
 
 PAYMENT_INFO = """
@@ -504,16 +517,66 @@ def custom_token_handler(message):
 @bot.message_handler(func=lambda message: message.text == "🎁 Redeem Rewards")
 def redeem_rewards_handler(message):
     chat_id = message.chat.id
-   
-
-   
-   
     user = get_user_data(chat_id)
     points = user.get('Points', 0)
+    
     markup = InlineKeyboardMarkup()
-    for reward, info in REDEEM_OPTIONS.items():
-        markup.add(InlineKeyboardButton(f"{reward} ({info['points']} pts)", callback_data=f"redeem:{reward}"))
-    bot.send_message(chat_id, f"🎁 You have {points} points. Choose a reward to redeem:", reply_markup=markup)
+    for category_id, category_info in REWARD_CATEGORIES.items():
+        markup.add(InlineKeyboardButton(category_info["name"], callback_data=f"category:{category_id}"))
+    
+    bot.send_message(chat_id, f"🎁 You have {points} points. Choose a reward category:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("category:"))
+def category_selection_handler(call):
+    chat_id = call.message.chat.id
+    category_id = call.data.split("category:")[1]
+    
+    if category_id not in REWARD_CATEGORIES:
+        bot.answer_callback_query(call.id, "Invalid category.")
+        return
+    
+    user = get_user_data(chat_id)
+    points = user.get('Points', 0)
+    category_info = REWARD_CATEGORIES[category_id]
+    
+    # Get rewards for this category
+    category_rewards = {k: v for k, v in REDEEM_OPTIONS.items() if v.get('category') == category_id}
+    
+    if not category_rewards:
+        bot.answer_callback_query(call.id, "No rewards available in this category.")
+        return
+    
+    markup = InlineKeyboardMarkup()
+    for reward_name, reward_info in category_rewards.items():
+        markup.add(InlineKeyboardButton(f"{reward_name} ({reward_info['points']} pts)", callback_data=f"redeem:{reward_name}"))
+    
+    markup.add(InlineKeyboardButton("⬅️ Back to Categories", callback_data="back_to_categories"))
+    
+    bot.edit_message_text(
+        f"🎁 {category_info['name']}\n{category_info['description']}\n\nYou have {points} points. Choose a reward:",
+        chat_id,
+        call.message.message_id,
+        reply_markup=markup
+    )
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "back_to_categories")
+def back_to_categories_handler(call):
+    chat_id = call.message.chat.id
+    user = get_user_data(chat_id)
+    points = user.get('Points', 0)
+    
+    markup = InlineKeyboardMarkup()
+    for category_id, category_info in REWARD_CATEGORIES.items():
+        markup.add(InlineKeyboardButton(category_info["name"], callback_data=f"category:{category_id}"))
+    
+    bot.edit_message_text(
+        f"🎁 You have {points} points. Choose a reward category:",
+        chat_id,
+        call.message.message_id,
+        reply_markup=markup
+    )
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("redeem:"))
 def redeem_callback_handler(call):
