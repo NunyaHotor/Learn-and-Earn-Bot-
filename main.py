@@ -119,12 +119,12 @@ PAYMENT_INFO = """
 4. Send USDT (choose TRC20 network)
 5. Take screenshot of successful transaction
 
-📧 Send payment screenshot to @Learn4CashAdmin for verification.
+📧 Send payment screenshot to @LearnEarnAfricaAdmin for verification.
 ⃣ Tokens are added after payment confirmation!
 """
 
 ABOUT_US = """
-🎓 <b>About Learn4Cash</b>
+🎓 <b>About LearnEarnAfrica</b>
 
 We are a revolutionary educational platform that combines learning with earning. Our mission is to make African history and culture accessible while rewarding knowledge seekers.
 
@@ -192,6 +192,8 @@ user_feedback_mode = {}
 user_actions = {}
 custom_token_requests = {}
 country_list_page = {}  # Add this line to your global state
+user_momo_pending = {}
+user_momo_pending = {}
 
 MOTIVATIONAL_MESSAGES = [
     "🌟 Believe in yourself! Every question you answer makes you smarter!",
@@ -602,9 +604,9 @@ def referral_handler(message):
         return
     referral_code = user.get("referral_code", f"REF{str(chat_id)[-6:]}")
     referral_message = f"""
-👥 <b>Referral</b> Invite friends to Learn4Cash and earn <b>2 tokens</b> per referral!
+👥 <b>Referral</b> Invite friends to LearnEarnAfrica and earn <b>2 tokens</b> per referral!
 📱 Your referral code: <b>{referral_code}</b>
-🔗 Share this link: <code>https://t.me/Learn4CashBot?start={referral_code}</code>
+🔗 Share this link: <code>https://t.me/LearnEarnAfricaBot?start={referral_code}</code>
 👥 Total Referrals: <b>{int(user.get('ReferralEarnings', 0))}</b>
     """
     bot.send_message(chat_id, referral_message, reply_markup=create_main_menu(chat_id))
@@ -657,7 +659,7 @@ def help_handler(message):
 
 💬 <b>Support:</b>
 • Use 'Send Feedback' for issues
-• Contact @Learn4CashAdmin for payment or reward queries
+• Contact @LearnEarnAfricaAdmin for payment or reward queries
 
 {ABOUT_US}
     """

@@ -26,7 +26,7 @@ class CryptoPaymentProcessor:
             "price_currency": "usd",
             "pay_currency": "usdttrc20",
             "ipn_callback_url": f"{os.getenv('WEBHOOK_URL', '')}/webhook/nowpayments",
-            "order_id": f"learn4cash_{user_id}_{int(datetime.now().timestamp())}",
+            "order_id": f"learnearnafrica_{user_id}_{int(datetime.now().timestamp())}",
             "order_description": description
         }
         
@@ -53,7 +53,7 @@ class CryptoPaymentProcessor:
             return {"error": "Coinbase API key not configured"}
             
         payload = {
-            "name": "Learn4Cash Tokens",
+            "name": "LearnEarnAfrica Tokens",
             "description": description,
             "pricing_type": "fixed_price",
             "local_price": {

@@ -33,7 +33,7 @@ class SheetManager:
         if not spreadsheet_id or spreadsheet_id == "your-google-sheet-id-here":
             raise ValueError("Invalid or missing SPREADSHEET_ID in .env file")
         self.spreadsheet = self.client.open_by_key(spreadsheet_id)
-        self.users_sheet = self.spreadsheet.worksheet("Learn4Cash")
+        self.users_sheet = self.spreadsheet.worksheet("LearnEarnAfrica")
         self.transactions_sheet = self.spreadsheet.worksheet("TokenLog")
         self.referrals_sheet = self.spreadsheet.worksheet("Redemptions")
         try:
