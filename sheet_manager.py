@@ -11,7 +11,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-load_dotenv()
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    # Running in Railway
+    load_dotenv('.env.railway')  # Load Railway-specific environment variables
+else:
+    # Running locally
+    load_dotenv()  # Load local environment variables
 
 class SheetManager:
     def __init__(self):
