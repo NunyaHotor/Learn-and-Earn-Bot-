@@ -120,7 +120,7 @@ PAYMENT_INFO = """
 5. Take screenshot of successful transaction
 
 📧 Send payment screenshot to @Learn4CashAdmin for verification.
-⃣ Tokens are added manually after payment confirmation!
+⃣ Tokens are added after payment confirmation!
 """
 
 ABOUT_US = """
@@ -950,7 +950,6 @@ def create_admin_menu():
     return markup
 
 # --- Bot Webhook ---
-@app.route('/', methods=['POST'])
 @app.route('/webhook', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -1003,42 +1002,6 @@ def notify_admin_purchase_handler(call):
         bot.send_message(admin_id, f"User @{user.get('Username', chat_id)} has requested admin attention for a token purchase.")
     bot.send_message(chat_id, "✅ Admin has been notified. Please wait for approval.")
 
-def set_webhook():
-    """Set the webhook for the Telegram bot."""
-    if not API_KEY:
-        logger.error("TELEGRAM_API_KEY not found. Cannot set webhook.")
-        return
-    
-    if not WEBHOOK_URL:
-        logger.error("WEBHOOK_URL not found. Cannot set webhook.")
-        return
-    
-    # Ensure the webhook URL includes the /webhook path
-    webhook_url = WEBHOOK_URL
-    if not webhook_url.endswith('/webhook'):
-        webhook_url = f"{webhook_url.rstrip('/')}/webhook"
-    
-    logger.info(f"Attempting to set webhook to: {webhook_url}")
-    
-    try:
-        # Remove any existing webhook first
-        remove_response = requests.post(f"https://api.telegram.org/bot{API_KEY}/deleteWebhook")
-        if remove_response.status_code == 200:
-            logger.info("Existing webhook removed successfully.")
-        
-        # Set the new webhook
-        response = requests.post(f"https://api.telegram.org/bot{API_KEY}/setWebhook", 
-                               data={"url": webhook_url})
-        
-        if response.status_code == 200:
-            logger.info("Webhook set successfully.")
-        else:
-            logger.error(f"Failed to set webhook: {response.text}")
-            
-    except Exception as e:
-        logger.error(f"Error setting webhook: {e}")
-
 if __name__ == "__main__":
-    set_webhook()  # Automatically register the webhook at startup
     register_cleanup_handlers(bot)
     app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 8080)))

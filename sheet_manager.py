@@ -121,9 +121,9 @@ class SheetManager:
                         'UserID': str(row[final_map['UserID']]),
                         'Name': str(row[final_map['Name']]) if len(row) > final_map['Name'] else 'Unknown',
                         'Username': str(row[final_map['Username']]) if len(row) > final_map['Username'] else '',
-                        'Tokens': float(row[final_map['Tokens']]) if len(row) > final_map['Tokens'] and str(row[final_map['Tokens']]).strip() else 0.0,
-                        'Points': float(row[final_map['Points']]) if len(row) > final_map['Points'] and str(row[final_map['Points']]).strip() else 0.0,
-                        'ReferralEarnings': float(row[final_map['ReferralEarnings']]) if len(row) > final_map['ReferralEarnings'] and str(row[final_map['ReferralEarnings']]).strip() else 0.0,
+                        'Tokens': float(row[final_map['Tokens']]) if len(row) > final_map['Tokens'] and str(row[final_map['Tokens']]).strip() and str(row[final_map['Tokens']]).replace('.', '', 1).isdigit() else 0.0,
+                        'Points': float(row[final_map['Points']]) if len(row) > final_map['Points'] and str(row[final_map['Points']]).strip() and str(row[final_map['Points']]).replace('.', '', 1).isdigit() else 0.0,
+                        'ReferralEarnings': float(row[final_map['ReferralEarnings']]) if len(row) > final_map['ReferralEarnings'] and str(row[final_map['ReferralEarnings']]).strip() and str(row[final_map['ReferralEarnings']]).replace('.', '', 1).isdigit() else 0.0,
                         'MoMoNumber': str(row[final_map['MoMoNumber']]) if len(row) > final_map['MoMoNumber'] else '',
                         'referral_code': str(row[final_map['referral_code']]) if len(row) > final_map['referral_code'] else f"REF{str(user_id)[-6:]}"
                     }
