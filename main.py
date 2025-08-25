@@ -189,7 +189,7 @@ current_question = {}
 paused_games = {}
 pending_token_purchases = {}
 user_feedback_mode = {}
-user_momo_pending = {}
+user_actions = {}
 custom_token_requests = {}
 country_list_page = {}  # Add this line to your global state
 
