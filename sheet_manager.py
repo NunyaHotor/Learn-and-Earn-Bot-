@@ -35,12 +35,24 @@ class SheetManager:
         self.spreadsheet = self.client.open_by_key(spreadsheet_id)
         self.users_sheet = self.spreadsheet.worksheet("LearnEarnAfrica")
         self.transactions_sheet = self.spreadsheet.worksheet("TokenLog")
-        self.referrals_sheet = self.spreadsheet.worksheet("Redemptions")
+        
+        try:
+            self.redemptions_sheet = self.spreadsheet.worksheet("Redemptions")
+        except gspread.exceptions.WorksheetNotFound:
+            self.redemptions_sheet = self.spreadsheet.add_worksheet(title="Redemptions", rows="100", cols="5")
+            self.redemptions_sheet.append_row(["UserID", "Reward", "PointsCost", "Timestamp", "Status"])
+
+        try:
+            self.referrals_sheet = self.spreadsheet.worksheet("Referrals")
+        except gspread.exceptions.WorksheetNotFound:
+            self.referrals_sheet = self.spreadsheet.add_worksheet(title="Referrals", rows="100", cols="3")
+            self.referrals_sheet.append_row(["ReferrerID", "ReferredID", "Timestamp"])
+
         try:
             self.cleanup_sheet = self.spreadsheet.worksheet("Cleanup Submissions")
         except gspread.exceptions.WorksheetNotFound:
             self.cleanup_sheet = self.spreadsheet.add_worksheet(title="Cleanup Submissions", rows="100", cols="20")
-            self.cleanup_sheet.append_row(["UserID", "Name", "Username", "Location", "MediaURL", "Timestamp", "Status"])
+            self.cleanup_sheet.append_row(["UserID", "Name", "Username", "Location", "MediaURL", "MediaType", "Timestamp", "Status", "ReviewedBy", "ReviewedAt", "PointsAwarded"])
 
     def _retry_on_quota_exceeded(self, func, *args, **kwargs):
         attempts = 5
@@ -185,12 +197,14 @@ class SheetManager:
         except Exception as e:
             logger.error(f"Error incrementing referral count for {referrer_id}: {e}")
 
-    def log_point_redemption(self, user_id, reward):
+    def log_point_redemption(self, user_id, reward, points_cost, category):
         try:
             def do_log_redemption():
                 timestamp = datetime.now(timezone.utc).isoformat()
-                row = [str(user_id), reward, timestamp]
-                self.transactions_sheet.append_row(row)
+                status = "PENDING" if category == "gadgets" else "PROCESSED"
+                # Headers: UserID, Reward, PointsCost, Timestamp, Status
+                row = [str(user_id), reward, points_cost, timestamp, status]
+                self.redemptions_sheet.append_row(row)
                 logger.info(f"Logged point redemption for {user_id}: {reward}")
             self._retry_on_quota_exceeded(do_log_redemption)
         except Exception as e:
@@ -286,8 +300,80 @@ class SheetManager:
         except Exception as e:
             logger.error(f"Error updating transaction status for {transaction_id}: {e}")
 
-def log_cleanup_submission(user_id, name, username, location, media_url):
-    sheet_manager_instance.log_cleanup_submission(user_id, name, username, location, media_url)
+    def log_cleanup_submission(self, user_id, name, username, location, media_url, media_type, timestamp):
+        try:
+            # Headers: UserID, Name, Username, Location, MediaURL, MediaType, Timestamp, Status, ReviewedBy, ReviewedAt, PointsAwarded
+            row = [str(user_id), name, username, location, media_url, media_type, timestamp, "PENDING", "", "", ""]
+            self._retry_on_quota_exceeded(self.cleanup_sheet.append_row, row)
+            logger.info(f"Logged cleanup submission for user {user_id}")
+        except Exception as e:
+            logger.error(f"Error logging cleanup submission for {user_id}: {e}")
+
+    def get_pending_cleanup_submissions(self):
+        try:
+            def do_get_pending():
+                all_values = self.cleanup_sheet.get_all_values()
+                if len(all_values) < 2:
+                    return []
+                
+                headers = all_values[0]
+                status_col_index = headers.index('Status')
+                
+                pending = []
+                for i, row in enumerate(all_values[1:], start=2):
+                    if len(row) > status_col_index and row[status_col_index] == 'PENDING':
+                        submission = dict(zip(headers, row))
+                        submission['row_index'] = i
+                        pending.append(submission)
+                return pending
+            return self._retry_on_quota_exceeded(do_get_pending)
+        except Exception as e:
+            logger.error(f"Error fetching pending cleanup submissions: {e}")
+            return []
+
+    def find_cleanup_submission(self, user_id, timestamp):
+        try:
+            def do_find():
+                all_values = self.cleanup_sheet.get_all_values()
+                if len(all_values) < 2: return None
+                headers = all_values[0]
+                user_id_col = headers.index('UserID')
+                timestamp_col = headers.index('Timestamp')
+                status_col = headers.index('Status')
+
+                for i, row in enumerate(all_values[1:], start=2):
+                    if len(row) > max(user_id_col, timestamp_col) and str(row[user_id_col]) == str(user_id) and row[timestamp_col] == timestamp and row[status_col] == 'PENDING':
+                        return i
+                return None
+            return self._retry_on_quota_exceeded(do_find)
+        except Exception as e:
+            logger.error(f"Error finding cleanup submission for user {user_id}: {e}")
+            return None
+
+    def approve_cleanup_submission(self, row_index, admin_id, points_awarded):
+        try:
+            def do_approve():
+                review_time = datetime.now(timezone.utc).isoformat()
+                self.cleanup_sheet.update_cell(row_index, 8, 'APPROVED') # Status column
+                self.cleanup_sheet.update_cell(row_index, 9, str(admin_id)) # ReviewedBy
+                self.cleanup_sheet.update_cell(row_index, 10, review_time) # ReviewedAt
+                self.cleanup_sheet.update_cell(row_index, 11, points_awarded) # PointsAwarded
+                logger.info(f"Approved cleanup submission at row {row_index}")
+            self._retry_on_quota_exceeded(do_approve)
+        except Exception as e:
+            logger.error(f"Error approving cleanup submission at row {row_index}: {e}")
+
+    def reject_cleanup_submission(self, row_index, admin_id):
+        try:
+            def do_reject():
+                review_time = datetime.now(timezone.utc).isoformat()
+                self.cleanup_sheet.update_cell(row_index, 8, 'REJECTED') # Status
+                self.cleanup_sheet.update_cell(row_index, 9, str(admin_id)) # ReviewedBy
+                self.cleanup_sheet.update_cell(row_index, 10, review_time) # ReviewedAt
+                logger.info(f"Rejected cleanup submission at row {row_index}")
+            self._retry_on_quota_exceeded(do_reject)
+        except Exception as e:
+            logger.error(f"Error rejecting cleanup submission at row {row_index}: {e}")
 
 sheet_manager_instance = SheetManager()
 
@@ -312,8 +398,8 @@ def log_token_purchase(user_id, transaction_id, amount, payment_method):
 def increment_referral_count(referrer_id, referred_id):
     sheet_manager_instance.increment_referral_count(referrer_id, referred_id)
 
-def log_point_redemption(user_id, reward):
-    sheet_manager_instance.log_point_redemption(user_id, reward)
+def log_point_redemption(user_id, reward, points_cost, category):
+    sheet_manager_instance.log_point_redemption(user_id, reward, points_cost, category)
 
 def update_user_momo(user_id, momo_number):
     sheet_manager_instance.update_user_momo(user_id, momo_number)
@@ -335,3 +421,18 @@ def find_user_by_referral_code(referral_code):
 
 def update_transaction_status(transaction_id, new_status):
     sheet_manager_instance.update_transaction_status(transaction_id, new_status)
+
+def get_pending_cleanup_submissions():
+    return sheet_manager_instance.get_pending_cleanup_submissions()
+
+def find_cleanup_submission(user_id, timestamp):
+    return sheet_manager_instance.find_cleanup_submission(user_id, timestamp)
+
+def approve_cleanup_submission(row_index, admin_id, points_awarded):
+    sheet_manager_instance.approve_cleanup_submission(row_index, admin_id, points_awarded)
+
+def reject_cleanup_submission(row_index, admin_id):
+    sheet_manager_instance.reject_cleanup_submission(row_index, admin_id)
+
+def log_cleanup_submission(user_id, name, username, location, media_url, media_type, timestamp):
+    sheet_manager_instance.log_cleanup_submission(user_id, name, username, location, media_url, media_type, timestamp)

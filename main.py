@@ -26,12 +26,13 @@ from sheet_manager import (
     get_sheet_manager,
     find_user_by_referral_code,
     update_transaction_status,
-    log_cleanup_submission
+    get_pending_cleanup_submissions,
+    find_cleanup_submission,
+    approve_cleanup_submission,
+    reject_cleanup_submission,
+    sheet_manager_instance
 )
-from translation_service import translation_service
 from exchange_rate_service import exchange_rate_service
-from ui_enhancer import ui_enhancer
-from user_preference_service import user_preference_service
 import quiz_manager
 from quiz_manager import player_progress
 from cleanup_handler import register_cleanup_handlers
@@ -50,6 +51,7 @@ ADMIN_CHAT_IDS = [
 
 API_KEY = os.getenv("TELEGRAM_API_KEY") or "YOUR_FALLBACK_API_KEY"
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY")
 bot = TeleBot(API_KEY, parse_mode='HTML')
 translator = Translator()
 app = Flask(__name__)
@@ -206,7 +208,6 @@ user_actions = {}
 custom_token_requests = {}
 country_list_page = {}  # Add this line to your global state
 user_momo_pending = {}
-user_momo_pending = {}
 
 MOTIVATIONAL_MESSAGES = [
     "🌟 Believe in yourself! Every question you answer makes you smarter!",
@@ -272,6 +273,27 @@ def send_feedback_to_admin(user_id, feedback_text):
     except Exception as e:
         logger.error(f"Error sending feedback to admin: {e}")
 
+def notify_admin_physical_redemption(user_id, reward_info):
+    """Notifies admins when a physical reward is redeemed."""
+    try:
+        user_data = get_user_data(user_id)
+        if not user_data:
+            return
+        message = (
+            f"📦 <b>PHYSICAL REWARD REDEEMED</b>\n\n"
+            f"👤 <b>User:</b> {user_data['Name']} (ID: <code>{user_id}</code>)\n"
+            f"📱 <b>Username:</b> @{user_data.get('Username', 'N/A')}\n"
+            f"🎁 <b>Reward:</b> {reward_info['reward']}\n"
+            f"💰 <b>Points Cost:</b> {reward_info['points']}\n"
+            f"📞 <b>MoMo Number:</b> {user_data.get('MoMoNumber', 'Not provided')}\n"
+            f"⏰ <b>Time:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
+            f"Please contact the user to arrange for delivery. The redemption has been logged with PENDING status."
+        )
+        for admin_id in ADMIN_CHAT_IDS:
+            bot.send_message(admin_id, message, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Error notifying admin about physical redemption: {e}")
+
 def translate_text(text, lang_code):
     try:
         return translator.translate(text, dest=lang_code).text
@@ -314,7 +336,7 @@ def start_handler(message):
         about_us=ABOUT_US,
         motivation=random.choice(MOTIVATIONAL_MESSAGES)
     )
-    with open('/home/mawutor/Downloads/Learn4Cash/L&E.png', 'rb') as photo:
+    with open('L&E.png', 'rb') as photo:
         bot.send_photo(chat_id, photo)
     bot.send_message(chat_id, welcome_msg, reply_markup=create_main_menu(chat_id))
 
@@ -587,13 +609,32 @@ def redeem_callback_handler(call):
     if not reward or not user:
         bot.answer_callback_query(call.id, "Invalid reward or user.")
         return
-    if user['Points'] < reward['points']:
+    if float(user['Points']) < reward['points']:
         bot.answer_callback_query(call.id, "Not enough points.")
         return
-    tokens_to_add = reward.get('amount', 0)
-    update_user_tokens_points(chat_id, user['Tokens'] + tokens_to_add, user['Points'] - reward['points'])
-    bot.send_message(chat_id, f"🎉 You redeemed: {reward['reward']}!\nOur team will contact you for delivery if applicable.")
-    bot.answer_callback_query(call.id)
+
+    # Deduct points and add tokens if applicable
+    tokens_to_add = reward.get('amount', 0) if reward.get('category') == 'tokens' else 0
+    update_user_tokens_points(chat_id, float(user['Tokens']) + tokens_to_add, float(user['Points']) - reward['points'])
+    
+    # Log the redemption
+    log_point_redemption(chat_id, reward['reward'], reward['points'], reward.get('category'))
+
+    # Prepare user message
+    user_message = f"🎉 You redeemed: {reward['reward']}!"
+    category = reward.get('category')
+    if category == 'gadgets':
+        user_message += "\n\nOur team will contact you shortly to arrange for delivery. This may take up to 48 hours."
+    elif category in ['momo', 'airtime', 'data']:
+        user_message += "\n\nYour reward is being processed and will be sent to you soon."
+    
+    bot.send_message(chat_id, user_message)
+    
+    # Notify admin if it's a physical item
+    if category == 'gadgets':
+        notify_admin_physical_redemption(chat_id, reward)
+
+    bot.answer_callback_query(call.id, "Redemption successful!")
 
 # --- Daily Reward Handler ---
 @bot.message_handler(func=lambda message: message.text == "🎁 Daily Reward")
@@ -915,7 +956,7 @@ def back_to_user_menu_handler(message):
 # --- Current Affairs Handler ---
 def fetch_current_affairs():
     try:
-        url = "https://newsdata.io/api/1/news?apikey=YOUR_API_KEY&country=ng,gh,za,eg,ke&category=business,world"
+        url = f"https://newsdata.io/api/1/news?apikey={NEWSDATA_API_KEY}&country=ng,gh,za,eg,ke&category=business,world"
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
@@ -1008,10 +1049,10 @@ def create_main_menu(chat_id):
 
 def create_admin_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("📊 Admin Dashboard"), KeyboardButton("🏹‍⚠️ Run Daily Lottery"))
-    markup.add(KeyboardButton("㊗️ Run Weekly Raffle"), KeyboardButton("�참 View Pending Tokens"))
-    markup.add(KeyboardButton("✅ Approve Token Purchase"), KeyboardButton("💌 Broadcast Message"))
-    markup.add(KeyboardButton("📈 User Stats"), KeyboardButton("⬅️ Back to User Menu"))
+    markup.row(KeyboardButton("📊 Admin Dashboard"), KeyboardButton("♻️ Review Cleanups"))
+    markup.row(KeyboardButton("✅ Approve Token Purchase"), KeyboardButton("💌 Broadcast Message"))
+    markup.row(KeyboardButton("🏹‍⚠️ Run Daily Lottery"), KeyboardButton("㊗️ Run Weekly Raffle"))
+    markup.row(KeyboardButton("📈 User Stats"), KeyboardButton("⬅️ Back to User Menu"))
     return markup
 
 # --- Bot Webhook ---
@@ -1024,6 +1065,152 @@ def webhook():
         return ''
     else:
         abort(403)
+
+@app.route('/webhook/nowpayments', methods=['POST'])
+def nowpayments_webhook():
+    if request.headers.get('content-type') == 'application/json':
+        data = request.get_json()
+        logger.info(f"Received NOWPayments webhook: {data}")
+
+        payment_status = data.get('payment_status')
+        order_id = data.get('order_id')
+
+        if payment_status == 'finished' and order_id and order_id.startswith('learnearnafrica_'):
+            try:
+                parts = order_id.split('_')
+                user_id = int(parts[1])
+                price_usd = float(data.get('price_amount'))
+                
+                # Calculate tokens from USD price
+                # 1 token = 0.4 GHS
+                # A simpler way: 1 token = 0.4 GHS = 0.4 / 11.8 USD ~= $0.0339
+                # tokens_to_add = price_usd / (0.4 / USD_TO_CEDIS_RATE)
+                tokens_to_add = round((price_usd * USD_TO_CEDIS_RATE) / 0.4)
+
+                user = get_user_data(user_id)
+                if user:
+                    update_user_tokens_points(user_id, float(user['Tokens']) + tokens_to_add, float(user['Points']))
+                    log_token_purchase(user_id, data.get('payment_id'), tokens_to_add, "NOWPayments_USDT")
+                    bot.send_message(user_id, f"✅ Your payment was successful! {tokens_to_add} tokens have been added to your account.")
+            except Exception as e:
+                logger.error(f"Error processing NOWPayments webhook: {e}")
+        return ''
+    else:
+        abort(403)
+
+# --- Cleanup Submission Review Handlers (for Admins) ---
+
+def process_cleanup_approval(call, row_index, user_id, points_to_award=50):
+    """Helper function to process a cleanup submission approval."""
+    admin_id = call.from_user.id
+    approve_cleanup_submission(row_index, admin_id, points_to_award)
+
+    user = get_user_data(user_id)
+    if user:
+        update_user_tokens_points(user_id, user['Tokens'], float(user['Points']) + points_to_award)
+        bot.send_message(user_id, f"✅ Your community cleanup submission has been approved! You've been awarded {points_to_award} points.")
+
+    bot.answer_callback_query(call.id, "Submission Approved.")
+    # Edit the original admin message to show it's been processed
+    new_caption = call.message.caption + "\n\n<b>✅ Approved by you.</b>"
+    bot.edit_message_caption(caption=new_caption, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML')
+
+def process_cleanup_rejection(call, row_index, user_id):
+    """Helper function to process a cleanup submission rejection."""
+    admin_id = call.from_user.id
+    reject_cleanup_submission(row_index, admin_id)
+
+    bot.send_message(user_id, "❌ Your community cleanup submission has been rejected. Please ensure your submission follows the guidelines and try again.")
+    bot.answer_callback_query(call.id, "Submission Rejected.")
+    # Edit the original admin message
+    new_caption = call.message.caption + "\n\n<b>❌ Rejected by you.</b>"
+    bot.edit_message_caption(caption=new_caption, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML')
+
+@bot.message_handler(func=lambda message: message.text == "♻️ Review Cleanups" and is_admin(message.chat.id))
+def review_cleanups_handler(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Fetching pending cleanup submissions...")
+    
+    pending_submissions = get_pending_cleanup_submissions()
+    
+    if not pending_submissions:
+        bot.send_message(chat_id, "No pending submissions to review.")
+        return
+        
+    bot.send_message(chat_id, f"Found {len(pending_submissions)} pending submissions. Displaying now:")
+    
+    for sub in pending_submissions:
+        user_id = sub['UserID']
+        row_index = sub['row_index']
+        
+        caption = (
+            f"🗑️ <b>Review Cleanup Submission</b>\n\n"
+            f"<b>User:</b> {sub['Name']} (@{sub.get('Username', 'N/A')})\n"
+            f"<b>ID:</b> <code>{user_id}</code>\n"
+            f"<b>Location:</b> {sub['Location']}\n"
+            f"<b>Submitted:</b> {sub['Timestamp']}"
+        )
+                  
+        markup = InlineKeyboardMarkup()
+        markup.add(
+            InlineKeyboardButton("✅ Approve (50 pts)", callback_data=f"cleanup_review_approve:{row_index}:{user_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"cleanup_review_reject:{row_index}:{user_id}")
+        )
+        
+        media_id = sub['MediaURL']
+        media_type = sub.get('MediaType', 'photo') # Default to photo if not specified
+
+        try:
+            if media_type == 'photo':
+                bot.send_photo(chat_id, media_id, caption=caption, reply_markup=markup, parse_mode='HTML')
+            elif media_type == 'video':
+                bot.send_video(chat_id, media_id, caption=caption, reply_markup=markup, parse_mode='HTML')
+        except Exception as e:
+            bot.send_message(chat_id, f"Could not display media for submission from user {user_id}.\nError: {e}\n\n{caption}", reply_markup=markup, parse_mode='HTML')
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cleanup_approve:"))
+def approve_cleanup_callback(call):
+    """Handles real-time approval from admin notification."""
+    try:
+        _, user_id, timestamp = call.data.split(":", 2)
+        user_id = int(user_id)
+        row_index = find_cleanup_submission(user_id, timestamp)
+        if row_index:
+            process_cleanup_approval(call, row_index, user_id)
+        else:
+            bot.answer_callback_query(call.id, "⚠️ Submission already processed or not found.")
+            bot.edit_message_caption(caption=call.message.caption + "\n\n<b>⚠️ Already processed.</b>", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Error in cleanup_approve callback: {e}")
+        bot.answer_callback_query(call.id, "An error occurred.")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cleanup_reject:"))
+def reject_cleanup_callback(call):
+    """Handles real-time rejection from admin notification."""
+    try:
+        _, user_id, timestamp = call.data.split(":", 2)
+        user_id = int(user_id)
+        row_index = find_cleanup_submission(user_id, timestamp)
+        if row_index:
+            process_cleanup_rejection(call, row_index, user_id)
+        else:
+            bot.answer_callback_query(call.id, "⚠️ Submission already processed or not found.")
+            bot.edit_message_caption(caption=call.message.caption + "\n\n<b>⚠️ Already processed.</b>", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Error in cleanup_reject callback: {e}")
+        bot.answer_callback_query(call.id, "An error occurred.")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cleanup_review_approve:"))
+def approve_cleanup_review_callback(call):
+    """Handles approval from the batch review list."""
+    _, row_index, user_id = call.data.split(":")
+    process_cleanup_approval(call, int(row_index), int(user_id))
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cleanup_review_reject:"))
+def reject_cleanup_review_callback(call):
+    """Handles rejection from the batch review list."""
+    _, row_index, user_id = call.data.split(":")
+    process_cleanup_rejection(call, int(row_index), int(user_id))
 
 # --- Marketplace Handlers ---
 @bot.message_handler(func=lambda message: message.text == "🛒 Marketplace")
@@ -1068,5 +1255,6 @@ def notify_admin_purchase_handler(call):
     bot.send_message(chat_id, "✅ Admin has been notified. Please wait for approval.")
 
 if __name__ == "__main__":
-    register_cleanup_handlers(bot)
+    # Register handlers from other modules
+    register_cleanup_handlers(bot, ADMIN_CHAT_IDS, logger)
     app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 8080)))
